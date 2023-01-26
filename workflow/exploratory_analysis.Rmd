@@ -1,0 +1,1308 @@
+---
+title: "Projet M2 2022-23"
+subtitle: 'Modèles pour la régression'
+author: "Mettre vos noms ICI"
+output: 
+  pdf_document: 
+    keep_tex: no
+fontsize: 12pt    
+header-includes:
+- \usepackage{pifont}
+- \usepackage{manfnt}
+- \usepackage{mdframed}
+- \usepackage{systeme}
+- \usepackage{txfonts}
+- \newcommand{\cH}{\mathcal{H}}
+
+params:
+  path_data_folder: "../data/"
+  path_R_folder: "../R/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+
+source(paste(params$path_R_folder,"libraries.R", sep=''))
+source(paste(params$path_R_folder,"functions.R", sep=''))
+set.seed(2022)
+
+train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+                   header=TRUE, 
+                   sep=",")
+test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+                  header=TRUE, 
+                  sep=",")
+
+train <- set_numerics(train)
+target <- 'SalePrice'
+```
+
+# EDA
+```{r}
+train %>% head()
+train %>% str()
+train %>% summary()
+
+train <- set_numerics(train)
+train %>% head
+```
+### Correlation
+```{r}
+train <- set_numerics(train)
+
+correlation_matrix = train %>% 
+  select_if(is.numeric) %>% 
+  cor(method='spearman')
+
+corrplot(correlation_matrix, 
+         order="hclust", 
+         tl.cex = 0.4, 
+         type='upper'
+         )
+```
+
+# EDA by var
+
+### SalePrice
+```{r}
+var <- 'SalePrice'
+
+train[,var] %>% str
+train[,var] %>% summary
+
+hist_and_density(train, var, binwidth=10000)
+
+if(!require(tseries)){install.packages('tseries')}
+jarque.bera.test(train[,var])
+
+shapiro.test(train[,var])
+```
+
+### YearBuilt
+```{r}
+var <- 'YearBuilt'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+```
+```{r}
+# avant 2000, après 2010
+train <- train %>%
+  mutate(YearBuilt_2000_2010 = if_else(YearBuilt<=2000, "ante2000", 
+                                  ifelse(YearBuilt<=2010, "2000to2010", "post2010")
+                                  )
+         )
+train$YearBuilt_2000_2010 <- train$YearBuilt_2000_2010 %>%
+  as.factor()
+
+# avant après 2000
+train <- train %>%
+  mutate(YearBuilt_2005 = if_else(YearBuilt<=2005, "ante2005", "post2005"))
+
+train$YearBuilt_2005 <- train$YearBuilt_2005 %>%
+  as.factor()
+```
+
+
+### YrSold
+```{r}
+var <- 'YrSold'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+```
+
+```{r}
+# méthode des deux quantiles 33% et 66%
+train <- train %>%
+  mutate(YrSold_2011_2014 = if_else(YrSold < 2011, "ante2011", 
+                                  ifelse(YrSold < 2014, "2011to2014", "post2014")
+                                  )
+         )
+train$YrSold_2011_2014 <- train$YrSold_2011_2014 %>%
+  as.factor()
+
+# méthode 50/50
+train <- train %>%
+  mutate(YrSold_2013 = if_else(YrSold < 2013, "ante2013", "post2013"))
+train$YrSold_2013 <- train$YrSold_2013 %>%
+  as.factor()
+```
+
+### MonthSold
+dropped cause weak correlation to target
+
+```{r}
+var <- 'MonthSold'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+```
+
+
+### Size.sqf.
+```{r}
+var <- 'Size.sqf.'
+
+train[,var] %>% str
+train[,var] %>% summary
+
+hist_and_density(train, var, binwidth=100)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot()
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+### Floor
+keep it num
+
+```{r}
+var <- 'Floor'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.factor
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+```
+
+### HallwayType
+Niquel don't modify
+
+```{r}
+var <- 'HallwayType'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+```
+
+### HeatingType
+Not relevant, should be merged, drop
+
+```{r}
+var <- 'HeatingType'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+```
+
+### AptManageType
+Niquel don't modify
+
+```{r}
+var <- 'AptManageType'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+```
+
+### N_Parkinglot.Ground.
+Go numeric, se fera probablement tej anyway, cor 20%
+
+```{r}
+var <- 'N_Parkinglot.Ground.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=20)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot()
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+### N_Parkinglot.Basement.
+Numérique? corr 43%
+
+```{r}
+var <- 'N_Parkinglot.Basement.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=20)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot()
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+### TimeToBusStop
+Faible corrélation, do not touch and it will go away
+
+```{r}
+var <- 'TimeToBusStop'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+```
+
+### TimeToSubway
+0-5 d'un côté (proche), autre durée d'un autre (moins proche x loin)
+
+```{r}
+var <- 'TimeToSubway'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+```
+```{r}
+# 0-5 vs all
+train <- train %>%
+  mutate(TimeToSubway_0_5 = if_else(TimeToSubway=='0-5min', "0-5min", "other"))
+
+train$TimeToSubway_0_5 <- train$TimeToSubway_0_5 %>%
+  as.factor()
+
+# 0-5 vs No vs other
+train <- train %>%
+  mutate(TimeToSubway_0_5_No = if_else(TimeToSubway=='0-5min', "0-5min", 
+                                  ifelse(TimeToSubway=="no_bus_stop_nearby", "No", "other")
+                                  )
+         )
+train$TimeToSubway_0_5_No <- train$TimeToSubway_0_5_No %>%
+  as.factor()
+```
+
+
+### N_APT
+cor 5%. on ne touche pas ça partira tout seul.
+
+```{r}
+var <- 'N_APT'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot()
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+### N_manager
+```{r}
+var <- 'N_manager'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot()
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm')
+```
+
+```{r}
+# coupure à 4
+train <- train %>%
+  mutate(N_manager_4 = if_else(N_manager %in% c(1,2,3,4), 'few', "many"))
+
+train$N_manager_4 <- train$N_manager_4 %>%
+  as.factor()
+```
+
+
+### N_elevators
+NO idea what to say
+
+```{r}
+var <- 'N_elevators'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+train[,var] <- train[,var] %>% as.character
+boxplot_mano(train, target, var)
+train[,var] <- train[,var] %>% as.numeric
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+
+### SubwayStation
+```{r}
+var <- 'SubwayStation'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+cor_qual(train, target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+```
+Chilseong - Daegu
+Bangoge - Myungduk - 
+banwoldang - hospital - sinnam + no
+
+
+### N_FacilitiesNearBy.PublicOffice.
+```{r}
+var <- 'N_FacilitiesNearBy.PublicOffice.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+
+Découpage
+[0,1,2,3,4] - [5,6,7]
+[1,2,3] [5,6,7] [0,4]
+```{r}
+# coupure à 4
+train <- train %>%
+  mutate(N_FacilitiesNearBy.PublicOffice._4 = 
+           if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3,4), 'few', "many"))
+
+train$N_FacilitiesNearBy.PublicOffice._4 <- train$N_FacilitiesNearBy.PublicOffice._4 %>%
+  as.factor()
+
+# groupe stats
+train <- train %>%
+  mutate(N_FacilitiesNearBy.PublicOffice._gr_stat = 
+           if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3), '123', 
+                   if_else(N_FacilitiesNearBy.PublicOffice. %in% c(5,6,7), "567", "04")
+                   )
+         )
+
+train$N_FacilitiesNearBy.PublicOffice._gr_stat <- train$N_FacilitiesNearBy.PublicOffice._gr_stat %>%
+  as.factor()
+```
+
+
+
+### N_FacilitiesNearBy.Hospital.
+```{r}
+var <- 'N_FacilitiesNearBy.Hospital.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+```{r}
+train_1 <- train %>% 
+  filter(train[,var]==1)
+
+train_2 <- train %>% 
+  filter(train[,var]==2)
+
+t.test(train_1[,target], train_2[,target], var.equal=F)
+```
+0 vs 1+2
+NO regroupement
+```{r}
+# coupure à 4
+train <- train %>%
+  mutate(N_FacilitiesNearBy.Hospital._0vsOther = 
+           if_else(N_FacilitiesNearBy.Hospital. %in% c(1,2), 'some', "none"))
+
+train$N_FacilitiesNearBy.Hospital._0vsOther <- train$N_FacilitiesNearBy.Hospital._0vsOther %>%
+  as.factor()
+```
+
+
+### N_FacilitiesNearBy.Dpartmentstore.
+```{r}
+var <- 'N_FacilitiesNearBy.Dpartmentstore.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+0 vs 1 vs 2
+0,1 vs 2
+
+### N_FacilitiesNearBy.Mall.
+```{r}
+var <- 'N_FacilitiesNearBy.Mall.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+do not touch
+delete ?
+very weak correlation
+
+### N_FacilitiesNearBy.ETC.
+```{r}
+var <- 'N_FacilitiesNearBy.ETC.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+0 vs others
+
+### N_FacilitiesNearBy.Park.
+```{r}
+var <- 'N_FacilitiesNearBy.Park.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+0,1 vs 2
+also keep
+
+### N_SchoolNearBy.Elementary.
+```{r}
+var <- 'N_SchoolNearBy.Elementary.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+on garde tout ou numérique, tester les deux
+
+
+### N_SchoolNearBy.Middle.
+```{r}
+var <- 'N_SchoolNearBy.Middle.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+0 vs 1,2,3 vs 4
+ou num
+
+### N_SchoolNearBy.High.
+```{r}
+var <- 'N_SchoolNearBy.High.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+Interprétabilité du 0 complexe
+[0,] - [1,2] - 3,4,5
+
+### N_SchoolNearBy.University.
+```{r}
+var <- 'N_SchoolNearBy.University.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+Découpage
+[0,1,2] vs 3,4,5
+0 vs 1,2 vs 3,4,5
+
+### N_FacilitiesInApt
+```{r}
+var <- 'N_FacilitiesInApt'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+
+Découpage
+[1,2,3] - [4,5,7,8] - [9,10] 
+
+
+### N_FacilitiesNearBy.Total.
+
+```{r}
+corr_pos_Facilities <- c('N_FacilitiesNearBy.Dpartmentstore.',
+                         'N_FacilitiesNearBy.Mall.',
+                         'N_FacilitiesNearBy.Park.'
+                         )
+corr_neg_Facilities <- c('N_FacilitiesNearBy.PublicOffice.',
+                         'N_FacilitiesNearBy.Hospital.',
+                         'N_FacilitiesNearBy.ETC.'
+                         )
+
+# N_FacilitiesInApt not counted
+
+train <- train %>% mutate(N_FacilitiesNearby.corr_pos = 
+                            N_FacilitiesNearBy.Dpartmentstore. + 
+                            N_FacilitiesNearBy.Mall.+
+                            N_FacilitiesNearBy.Park.
+                         )  
+
+train <- train %>% mutate(N_FacilitiesNearby.corr_neg = 
+                            N_FacilitiesNearBy.PublicOffice. + 
+                            N_FacilitiesNearBy.Hospital.+
+                            N_FacilitiesNearBy.Park.
+                         )  
+```
+
+```{r}
+# var <- 'N_FacilitiesNearBy.Total.'
+var <- 'N_FacilitiesNearby.corr_neg'
+var <- 'N_FacilitiesNearby.corr_pos'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+```{r}
+correlation_matrix = train %>% 
+  dplyr::select(starts_with('N_Fac'))
+
+correlation_matrix <- cor(cbind(train$SalePrice, correlation_matrix), method='spearman')
+
+corrplot(correlation_matrix, 
+         order="hclust", 
+         tl.cex = 0.4, 
+         type='upper'
+         )
+```
+
+Notes
+potentiel mix des variables en fonction de la corrélation
+sum_cor_po vs sum_cor_neg
+
+Sinon
+0 vs 3à9 vs 11à16
+
+
+
+
+
+### N_SchoolNearBy.Total.
+```{r}
+var <- 'N_SchoolNearBy.Total.'
+
+train[,var] %>% str
+train[,var] %>% summary
+train[,var] %>% unique
+train[,var] %>% quantile
+train[,var] %>% cor(train[,target], method='spearman')
+train %>% cor_qual(target, var)
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline(train[,target], train[,var])
+
+
+# if numeric
+hist_and_density(train, var, binwidth=1)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target)
+```
+```{r}
+correlation_matrix = train %>% 
+  dplyr::select(starts_with('N_School'))
+
+correlation_matrix <- cor(cbind(train$SalePrice, correlation_matrix), method='spearman')
+
+corrplot(correlation_matrix, 
+         order="hclust", 
+         tl.cex = 0.4, 
+         type='upper'
+         )
+```
+Zook all N_school and only keep total ?
+
+
+# EDA by type
+
+```{r}
+list(
+  'SalePrice',
+  'Size.sqf.',
+  'YearBuilt',
+  'YrSold',
+  'MonthSold',
+  'N_FacilitiesNearBy.PublicOffice.',
+  'N_FacilitiesNearBy.Hospital.',
+  'N_FacilitiesNearBy.Dpartmentstore.',
+  'N_FacilitiesNearBy.Mall.',
+  'N_FacilitiesNearBy.ETC.',
+  'N_FacilitiesNearBy.Park.',
+  'N_SchoolNearBy.Elementary.',
+  'N_SchoolNearBy.Middle.',
+  'N_SchoolNearBy.High.',
+  'N_SchoolNearBy.University.',
+  'N_FacilitiesInApt',
+  'N_FacilitiesNearBy.Total.',
+  'N_SchoolNearBy.Total.',
+  'N_Parkinglot.Ground.',
+  'N_Parkinglot.Basement.',
+  'N_APT',
+  'N_manager',
+  'N_elevators',
+  'Floor'
+) -> quantitative_vars
+
+list(
+  'HallwayType',
+  'HeatingType',
+  'AptManageType',
+  'TimeToBusStop',
+  'TimeToSubway',
+  'SubwayStation'
+) -> qualitative_vars
+
+length(quantitative_vars) + length(qualitative_vars) == length(train)
+
+for (var in quantitative_vars)
+    train[,var] <- train[,var] %>% as.numeric()
+
+
+qualitative_vars <- unlist(qualitative_vars)
+quantitative_vars <- unlist(quantitative_vars)
+```
+
+## EDA for quantitative variables
+```{r}
+train_quant <- train[, quantitative_vars]
+train_quant %>% colnames()
+```
+###
+
+
+```{r}
+for(var in train_quant){
+  hist(var)
+}
+```
+```{r}
+ggplot(train_quant) +
+  geom_histogram(aes(SalePrice), binwidth=10000) +
+  geom_density(aes(SalePrice)) 
+```
+
+
+```{r}
+for (var_name in colnames(train_quant)){
+    print(
+      ggplot(train_quant, aes(get(var_name))) +
+        geom_density() +
+        ggtitle(var_name)*
+        # geom_line(aes(Date, get(elem))) +
+        # geom_point(aes(Date, get(elem)))
+
+        # theme_minimal() +
+        # xlab("Date") +
+        # ylab("Values") +
+        # scale_color_manual(values = c("elem"="#B22222"), labels= c(elem)) +
+        # labs(colors = "legends")
+    )
+}
+```
+
+
+## EDA for qualitative variables
+```{r}
+train_qual <- train[, qualitative_vars]
+```
+
+```{r}
+
+```
+
+
+
+

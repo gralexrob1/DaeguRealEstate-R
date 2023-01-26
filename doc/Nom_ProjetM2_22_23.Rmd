@@ -1,0 +1,86 @@
+---
+title: "Projet M2 2022-23"
+subtitle: 'Modèles pour la régression'
+author: "Mettre vos noms ICI"
+output: 
+  pdf_document: 
+    keep_tex: no
+fontsize: 12pt    
+header-includes:
+- \usepackage{pifont}
+- \usepackage{manfnt}
+- \usepackage{mdframed}
+- \usepackage{systeme}
+- \usepackage{txfonts}
+- \newcommand{\cH}{\mathcal{H}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+```
+
+
+
+
+```{r echo=FALSE}
+library(MASS)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape2)
+library(dplyr)
+library(GGally)
+library(corrplot)
+library(carData) 
+library(car)
+library(questionr)
+library(multcomp)
+library(dplyr)
+library(tidyverse)
+library(forestmodel)
+library(effects)
+library(pscl)
+library(ResourceSelection)
+library(survey)
+library(caret)
+library(pROC)
+library(ROCR)
+library(mlr)
+library(randomForest)
+library(party)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(nnet)
+library(ResourceSelection)
+```
+
+
+# Les données
+
+Le jeu de données concerne la vente de 5891 logements et de 29 variables explicatives décrivant (presque) tous les aspects de ce logement et de son environnement en Corée du Sud dans la ville de Daegu, sur une période de 10 ans. 
+
+
+
+
+
+
+### But de l'étude
+
+
+
+L'objectif est de  prédire le prix  de vente  et d'obtenir le modèle qui aura le plus petit \textbf{RMSE}. Vous devez contruire un (ou 2 modèles) qui permet de calculer le prix de vente du logement ( $Y$=\textbf{SalePrice})  en fonction de toutes ou une partie des variables (regresseurs/facteurs) contenues dans le jeu de données. Il y a 2 jeux de données :
+
+- Le "train" avec 4189 observations, à partir duquel vous devez contruire votre modèle final 
+- Le "test" avec 1702 observations, que vous ne devez pas utiliser pour contruire votre modèle.
+
+
+```{r}
+train=read.csv2("train.csv",header=TRUE,sep=",")
+test=read.csv2("test.csv",header=TRUE,sep=",")
+```
+
+
+```{r}
+set.seed(2022)
+```

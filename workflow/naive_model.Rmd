@@ -1,0 +1,71 @@
+---
+title: "Projet M2 2022-23"
+subtitle: 'Modèles pour la régression'
+author: "Mettre vos noms ICI"
+output: 
+  pdf_document: 
+    keep_tex: no
+fontsize: 12pt    
+header-includes:
+- \usepackage{pifont}
+- \usepackage{manfnt}
+- \usepackage{mdframed}
+- \usepackage{systeme}
+- \usepackage{txfonts}
+- \newcommand{\cH}{\mathcal{H}}
+
+params:
+  path_data_folder: "../data/"
+  path_R_folder: "../R/"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+
+source(paste(params$path_R_folder,"libraries.R", sep=''))
+source(paste(params$path_R_folder,"functions.R", sep=''))
+set.seed(2022)
+
+train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+                   header=TRUE, 
+                   sep=",")
+test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+                  header=TRUE, 
+                  sep=",")
+
+target <- 'SalePrice'
+```
+
+
+```{r}
+lm_all = lm(SalePrice ~., data = train)
+lm_all %>% summary
+
+lm_all_pred <- lm_all %>%
+  predict(newdata=test)
+
+RMSE(lm_all_pred, test$SalePrice)
+```
+```{r}
+train_quant <- train %>%
+  select_if(is.numeric)
+
+lm_quant <- lm(SalePrice ~ ., train_quant)
+lm_quant %>% summary
+
+lm_quant_pred <- lm_quant %>%
+  predict(newdata=test)
+
+RMSE(lm_quant_pred, test$SalePrice)
+```
+
+```{r}
+step_model <- stepAIC(lm_quant, direction="both", trace=TRUE)
+
+step_model_pred <- step_model %>%
+  predict(newdata=test)
+
+RMSE(step_model_pred, test$SalePrice)
+```
+
+
