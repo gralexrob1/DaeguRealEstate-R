@@ -19,22 +19,24 @@ params:
   path_R_folder: "../R/"
 ---
 
+# Paremeters
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
 
 source(paste(params$path_R_folder,"libraries.R", sep=''))
 source(paste(params$path_R_folder,"functions.R", sep=''))
+source(paste(params$path_R_folder,"preprocessing.R", sep=''))
 set.seed(2022)
 
-train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+init_train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
                    header=TRUE, 
                    sep=",")
-test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
                   header=TRUE, 
                   sep=",")
 
-train <- set_numerics(train)
 target <- 'SalePrice'
+train <- set_numerics(init_train, num_vars)
 ```
 
 # EDA
@@ -42,23 +44,11 @@ target <- 'SalePrice'
 train %>% head()
 train %>% str()
 train %>% summary()
-
-train <- set_numerics(train)
-train %>% head
 ```
+
 ### Correlation
 ```{r}
-train <- set_numerics(train)
-
-correlation_matrix = train %>% 
-  select_if(is.numeric) %>% 
-  cor(method='spearman')
-
-corrplot(correlation_matrix, 
-         order="hclust", 
-         tl.cex = 0.4, 
-         type='upper'
-         )
+get_correlation(train)
 ```
 
 # EDA by var
@@ -71,6 +61,10 @@ train[,var] %>% str
 train[,var] %>% summary
 
 hist_and_density(train, var, binwidth=10000)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
 
 if(!require(tseries)){install.packages('tseries')}
 jarque.bera.test(train[,var])
@@ -101,23 +95,6 @@ train[,var] <- train[,var] %>% as.numeric
 
 ridgeline(train[,target], train[,var])
 ```
-```{r}
-# avant 2000, après 2010
-train <- train %>%
-  mutate(YearBuilt_2000_2010 = if_else(YearBuilt<=2000, "ante2000", 
-                                  ifelse(YearBuilt<=2010, "2000to2010", "post2010")
-                                  )
-         )
-train$YearBuilt_2000_2010 <- train$YearBuilt_2000_2010 %>%
-  as.factor()
-
-# avant après 2000
-train <- train %>%
-  mutate(YearBuilt_2005 = if_else(YearBuilt<=2005, "ante2005", "post2005"))
-
-train$YearBuilt_2005 <- train$YearBuilt_2005 %>%
-  as.factor()
-```
 
 
 ### YrSold
@@ -144,22 +121,6 @@ train[,var] <- train[,var] %>% as.numeric
 ridgeline(train[,target], train[,var])
 ```
 
-```{r}
-# méthode des deux quantiles 33% et 66%
-train <- train %>%
-  mutate(YrSold_2011_2014 = if_else(YrSold < 2011, "ante2011", 
-                                  ifelse(YrSold < 2014, "2011to2014", "post2014")
-                                  )
-         )
-train$YrSold_2011_2014 <- train$YrSold_2011_2014 %>%
-  as.factor()
-
-# méthode 50/50
-train <- train %>%
-  mutate(YrSold_2013 = if_else(YrSold < 2013, "ante2013", "post2013"))
-train$YrSold_2013 <- train$YrSold_2013 %>%
-  as.factor()
-```
 
 ### MonthSold
 dropped cause weak correlation to target
@@ -425,24 +386,6 @@ boxplot_mano(train, target, var)
 
 ridgeline(train[,target], train[,var])
 ```
-```{r}
-# 0-5 vs all
-train <- train %>%
-  mutate(TimeToSubway_0_5 = if_else(TimeToSubway=='0-5min', "0-5min", "other"))
-
-train$TimeToSubway_0_5 <- train$TimeToSubway_0_5 %>%
-  as.factor()
-
-# 0-5 vs No vs other
-train <- train %>%
-  mutate(TimeToSubway_0_5_No = if_else(TimeToSubway=='0-5min', "0-5min", 
-                                  ifelse(TimeToSubway=="no_bus_stop_nearby", "No", "other")
-                                  )
-         )
-train$TimeToSubway_0_5_No <- train$TimeToSubway_0_5_No %>%
-  as.factor()
-```
-
 
 ### N_APT
 cor 5%. on ne touche pas ça partira tout seul.
@@ -516,15 +459,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm')
 ```
 
-```{r}
-# coupure à 4
-train <- train %>%
-  mutate(N_manager_4 = if_else(N_manager %in% c(1,2,3,4), 'few', "many"))
-
-train$N_manager_4 <- train$N_manager_4 %>%
-  as.factor()
-```
-
 
 ### N_elevators
 NO idea what to say
@@ -587,9 +521,7 @@ boxplot_mano(train, target, var)
 
 ridgeline(train[,target], train[,var])
 ```
-Chilseong - Daegu
-Bangoge - Myungduk - 
-banwoldang - hospital - sinnam + no
+
 
 
 ### N_FacilitiesNearBy.PublicOffice.
@@ -628,31 +560,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-
-Découpage
-[0,1,2,3,4] - [5,6,7]
-[1,2,3] [5,6,7] [0,4]
-```{r}
-# coupure à 4
-train <- train %>%
-  mutate(N_FacilitiesNearBy.PublicOffice._4 = 
-           if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3,4), 'few', "many"))
-
-train$N_FacilitiesNearBy.PublicOffice._4 <- train$N_FacilitiesNearBy.PublicOffice._4 %>%
-  as.factor()
-
-# groupe stats
-train <- train %>%
-  mutate(N_FacilitiesNearBy.PublicOffice._gr_stat = 
-           if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3), '123', 
-                   if_else(N_FacilitiesNearBy.PublicOffice. %in% c(5,6,7), "567", "04")
-                   )
-         )
-
-train$N_FacilitiesNearBy.PublicOffice._gr_stat <- train$N_FacilitiesNearBy.PublicOffice._gr_stat %>%
-  as.factor()
-```
-
 
 
 ### N_FacilitiesNearBy.Hospital.
@@ -700,17 +607,6 @@ train_2 <- train %>%
 
 t.test(train_1[,target], train_2[,target], var.equal=F)
 ```
-0 vs 1+2
-NO regroupement
-```{r}
-# coupure à 4
-train <- train %>%
-  mutate(N_FacilitiesNearBy.Hospital._0vsOther = 
-           if_else(N_FacilitiesNearBy.Hospital. %in% c(1,2), 'some', "none"))
-
-train$N_FacilitiesNearBy.Hospital._0vsOther <- train$N_FacilitiesNearBy.Hospital._0vsOther %>%
-  as.factor()
-```
 
 
 ### N_FacilitiesNearBy.Dpartmentstore.
@@ -749,8 +645,7 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-0 vs 1 vs 2
-0,1 vs 2
+
 
 ### N_FacilitiesNearBy.Mall.
 ```{r}
@@ -788,9 +683,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-do not touch
-delete ?
-very weak correlation
 
 ### N_FacilitiesNearBy.ETC.
 ```{r}
@@ -866,8 +758,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-0,1 vs 2
-also keep
 
 ### N_SchoolNearBy.Elementary.
 ```{r}
@@ -905,7 +795,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-on garde tout ou numérique, tester les deux
 
 
 ### N_SchoolNearBy.Middle.
@@ -944,8 +833,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-0 vs 1,2,3 vs 4
-ou num
 
 ### N_SchoolNearBy.High.
 ```{r}
@@ -983,8 +870,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-Interprétabilité du 0 complexe
-[0,] - [1,2] - 3,4,5
 
 ### N_SchoolNearBy.University.
 ```{r}
@@ -1022,9 +907,6 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-Découpage
-[0,1,2] vs 3,4,5
-0 vs 1,2 vs 3,4,5
 
 ### N_FacilitiesInApt
 ```{r}
@@ -1063,12 +945,7 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   labs(x=var, y=target)
 ```
 
-Découpage
-[1,2,3] - [4,5,7,8] - [9,10] 
-
-
 ### N_FacilitiesNearBy.Total.
-
 ```{r}
 corr_pos_Facilities <- c('N_FacilitiesNearBy.Dpartmentstore.',
                          'N_FacilitiesNearBy.Mall.',
@@ -1095,9 +972,9 @@ train <- train %>% mutate(N_FacilitiesNearby.corr_neg =
 ```
 
 ```{r}
-# var <- 'N_FacilitiesNearBy.Total.'
-var <- 'N_FacilitiesNearby.corr_neg'
-var <- 'N_FacilitiesNearby.corr_pos'
+var <- 'N_FacilitiesNearBy.Total.'
+# var <- 'N_FacilitiesNearby.corr_neg'
+# var <- 'N_FacilitiesNearby.corr_pos'
 
 train[,var] %>% str
 train[,var] %>% summary
@@ -1143,17 +1020,6 @@ corrplot(correlation_matrix,
          type='upper'
          )
 ```
-
-Notes
-potentiel mix des variables en fonction de la corrélation
-sum_cor_po vs sum_cor_neg
-
-Sinon
-0 vs 3à9 vs 11à16
-
-
-
-
 
 ### N_SchoolNearBy.Total.
 ```{r}

@@ -1,7 +1,43 @@
+num_vars <- c(
+  'SalePrice',
+  'Size.sqf.',
+  'YearBuilt',
+  'YrSold',
+  'MonthSold',
+  'N_FacilitiesNearBy.PublicOffice.',
+  'N_FacilitiesNearBy.Hospital.',
+  'N_FacilitiesNearBy.Dpartmentstore.',
+  'N_FacilitiesNearBy.Mall.',
+  'N_FacilitiesNearBy.ETC.',
+  'N_FacilitiesNearBy.Park.',
+  'N_SchoolNearBy.Elementary.',
+  'N_SchoolNearBy.Middle.',
+  'N_SchoolNearBy.High.',
+  'N_SchoolNearBy.University.',
+  'N_FacilitiesInApt',
+  'N_FacilitiesNearBy.Total.',
+  'N_SchoolNearBy.Total.',
+  'N_Parkinglot.Ground.',
+  'N_Parkinglot.Basement.',
+  'N_APT',
+  'N_manager',
+  'N_elevators',
+  'Floor'
+)
+
+chr_vars <- c(
+  'HallwayType',
+  'HeatingType',
+  'AptManageType',
+  'TimeToBusStop',
+  'TimeToSubway',
+  'SubwayStation'
+)
+
+
 preprocessing <- function(data){
   
   ##### YearBuilt #####
-  
   # avant 2000, après 2010
   data <- data %>%
     mutate(YearBuilt_2000_2010 = if_else(YearBuilt<=2000, "ante2000", 
@@ -9,18 +45,17 @@ preprocessing <- function(data){
     )
     )
   data$YearBuilt_2000_2010 <- data$YearBuilt_2000_2010 %>%
-    as.factor()
+    as.character()
   
   # avant après 2000
   data <- data %>%
     mutate(YearBuilt_2005 = if_else(YearBuilt<=2005, "ante2005", "post2005"))
   
   data$YearBuilt_2005 <- data$YearBuilt_2005 %>%
-    as.factor()
+    as.character()
   
   
-  ##### YrSale  ##### 
-  
+  ##### YrSold  ##### 
   # méthode des deux quantiles 33% et 66%
   data <- data %>%
     mutate(YrSold_2011_2014 = if_else(YrSold < 2011, "ante2011", 
@@ -36,47 +71,66 @@ preprocessing <- function(data){
   data$YrSold_2013 <- data$YrSold_2013 %>%
     as.factor()
   
+  ##### MonthSold #####
+  # categorical or dropped
+  data$MonthSold <- data$MonthSold %>% as.character
+  
+  ##### Size.sqf. #####
+  
+  ##### Floor #####
+  # should be numeric
+  
+  ##### HallwayType #####
+  # no need to modify
+  
+  ##### HeatingType #####
+  # should be merged  or dropped (equivalent)
+  
+  ##### AptManageType #####
+  # no need to modify
   
   ##### N_Parkinglot.Ground. ##### 
-  ##### N_Parkinglot.Basement.   ##### 
+  # should be numeric, will probably get skipped
+  
+  ##### N_Parkinglot.Basement. #####
+  # should be numeric
   
   ##### TimeToBusStop ##### 
+  # no modification
   
   ##### TimeToSubway ##### 
-  
   # 0-5 vs all
+  group1 <- c('0-5min')
   data <- data %>%
-    mutate(TimeToSubway_0_5 = if_else(TimeToSubway=='0-5min', "0-5min", "other"))
-  
-  data$TimeToSubway_0_5 <- data$TimeToSubway_0_5 %>%
-    as.factor()
+    mutate(TimeToSubway_05vsOther = if_else(TimeToSubway %in% group1, "group1", "group2"))
+  data$TimeToSubway_05vsOther <- data$TimeToSubway_05vsOther %>%
+    as.character()
   
   # 0-5 vs No vs other
+  group1 <- c('no_bus_stop_nearby')
+  group2 <- c('0-5min')
   data <- data %>%
-    mutate(TimeToSubway_0_5_No = if_else(TimeToSubway=='0-5min', "0-5min", 
-                                         ifelse(TimeToSubway=="no_bus_stop_nearby", "No", "other")
-    )
-    )
-  data$TimeToSubway_0_5_No <- data$TimeToSubway_0_5_No %>%
-    as.factor()
-  
+    mutate(TimeToSubway_Novs05vsOther = if_else(TimeToSubway %in% group1, "group1", 
+                                         ifelse(TimeToSubway %in% group2, "group2", 
+                                                "group3")
+                                         )
+           )
+  data$TimeToSubway_Novs05vsOther <- data$TimeToSubway_Novs05vsOther %>%
+    as.character()
   
   ##### N_APT #####
+  # weak correlation, no modification
+  
   ##### N_manager #####
-  
   # coupure à 4
+  group1 <- c(1,2,3,4)
   data <- data %>%
-    mutate(N_manager_4 = if_else(N_manager %in% c(1,2,3,4), 'few', "many"))
-  
-  data$N_manager_4 <- data$N_manager_4 %>%
-    as.factor()
-  
+    mutate(N_manager_splitAt4 = if_else(N_manager %in% group1, 'lessThan4', "moreThan4"))
   
   ##### N_elevators #####
-  
+  # chaotic, not sure it can event be used
   
   ##### SubwayStation #####
-  
   group1 <- c('Sin-nam','Bangoge','Myung-duk')
   group2 <- c('Daegu','Chil-sing-market')
   group3 <- c('Banwoldang', 'Kyungbuk-uni-hospital')
@@ -84,7 +138,7 @@ preprocessing <- function(data){
     mutate(SubwayStation_byProxy1 =
              if_else(SubwayStation %in% group1, 'group1',
                      if_else(SubwayStation %in% group2, 'group2',
-                             if_else(Subway %in% group3, 'group3', 'None')
+                             if_else(SubwayStation %in% group3, 'group3', 'None')
                              )
                      )
            )
@@ -96,74 +150,76 @@ preprocessing <- function(data){
     mutate(SubwayStation_byProxy2 =
              if_else(SubwayStation %in% group1, 'group1',
                      if_else(SubwayStation %in% group2, 'group2',
-                             if_else(Subway %in% group3, 'group3', 'None')
+                             if_else(SubwayStation %in% group3, 'group3', 'None')
                      )
              )
     )
   
   ##### N_FacilitiesNearBy.PublicOffice. #####
-  
   # coupure à 4
+  group1 <- c(1,2,3,4)
   data <- data %>%
-    mutate(N_FacilitiesNearBy.PublicOffice._4 = 
-             if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3,4), 'few', "many"))
+    mutate(N_FacilitiesNearBy.PublicOffice._splitAt4 = 
+             if_else(N_FacilitiesNearBy.PublicOffice. %in% group1, 'few', "many"))
   
   # groupe stats
+  group1 <- c(1,2,3)
+  group2 <- c(5,6,7)
+  group3 <- c(0,4)
   data <- data %>%
     mutate(N_FacilitiesNearBy.PublicOffice._gr_stat = 
-             if_else(N_FacilitiesNearBy.PublicOffice. %in% c(1,2,3), '123', 
-                     if_else(N_FacilitiesNearBy.PublicOffice. %in% c(5,6,7), "567", "04")
+             if_else(N_FacilitiesNearBy.PublicOffice. %in% group1, '123', 
+                     if_else(N_FacilitiesNearBy.PublicOffice. %in% group2, "567", "04")
              )
     )
 
   
   ##### N_FacilitiesNearBy.Hospital. #####
-  
   # 0 vs 1,2
+  group1 <- c(0)
+  group2 <- c(1,2)
   data <- data %>%
-    mutate(N_FacilitiesNearBy.Hospital._0vsOther = 
-             if_else(N_FacilitiesNearBy.Hospital. %in% c(1,2), 'some', "none"))
+    mutate(N_FacilitiesNearBy.Hospital._0vs12 = 
+             if_else(N_FacilitiesNearBy.Hospital. %in% group1, 'none', "some"))
   
   
   ##### N_FacilitiesNearBy.Dpartmentstore. #####
-  
   # 0,1 vs 2
+  group1 <- c(0,1)
+  group2 <- c(2)
   data <- data %>%
-    mutate(N_FacilitiesNearBy.Dpartmentstore._2vsOther = 
-             if_else(N_FacilitiesNearBy.Dpartmentstore. %in% c(0,1), '1orNone', "Two"))
+    mutate(N_FacilitiesNearBy.Dpartmentstore._01vs2 = 
+             if_else(N_FacilitiesNearBy.Dpartmentstore. %in% group1, '01', "2"))
   
   ##### N_FacilitiesNearBy.Mall. #####
-  
+  # no modification, weak correlation
   
   ##### N_FacilitiesNearBy.ETC. #####
-  
   # 0 vs others
+  group1 <- c(0)
   data <- data %>%
     mutate(N_FacilitiesNearBy.ETC._0vsOther = 
-             if_else(N_FacilitiesNearBy.ETC. %in% c(0), 'None', "Other"))
+             if_else(N_FacilitiesNearBy.ETC. %in% group1, 'None', "Other"))
   
   
   ##### N_FacilitiesNearBy.Park. #####
-  
   # 0,1 vs 2
+  group1 <- c(0,1)
+  group2 <- c(2)
   data <- data %>%
-    mutate(N_FacilitiesNearBy.Park._2vsOther = 
-             if_else(N_FacilitiesNearBy.Park. %in% c(0,1), '1orNone', "Two"))
+    mutate(N_FacilitiesNearBy.Park._01vs2 = 
+             if_else(N_FacilitiesNearBy.Park. %in% group1, '01', "2"))
   
   ##### N_SchoolNearBy.Elementary. #####
-  
-  # as factor
-  data$N_SchoolNearBy.Elementary._chr <- data$N_SchoolNearBy.Elementary. %>%
+  # try numeric and categorical
+  data$N_SchoolNearBy.Elementary._cat <- data$N_SchoolNearBy.Elementary. %>%
     as.character
    
-  
   ##### N_SchoolNearBy.Middle. #####
-  
   # 0 vs 1,2,3 vs 4
   group1 <- c(0)
   group2 <- c(1,2,3)
   group3 <- c(4)
-  
   data <- data %>%
     mutate(N_SchoolNearBy.Middle._0vs123vs4 = 
              if_else(N_SchoolNearBy.Middle. %in% group1, 'group1', 
@@ -171,14 +227,12 @@ preprocessing <- function(data){
                              'group3'))
            )
   
-  # as factor
+  # categorical
   data$N_SchoolNearBy.Middle._chr <- data$N_SchoolNearBy.Middle. %>% 
     as.character
   
-  
-  
   ##### N_SchoolNearBy.High. #####
-  
+  # 0 vs 1,2 vs 3,4,5
   group1 <- c(0)
   group2 <- c(1,2)
   group3 <- c(3,4,5)
@@ -211,9 +265,7 @@ preprocessing <- function(data){
                              'group3'))
     )
   
-  
   ##### N_FacilitiesInApt #####
-  
   # [1,2,3] - [4,5,7,8] - [9,10] 
   group1 <- c(1,2,3)
   group2 <- c(4,5,6,7,8)
@@ -226,7 +278,7 @@ preprocessing <- function(data){
     )
   
   ##### N_FacilitiesNearBy.Total. #####
-  
+  # idea: merge variables correlated to target with same sign
   corr_pos_Facilities <- c('N_FacilitiesNearBy.Dpartmentstore.',
                            'N_FacilitiesNearBy.Mall.',
                            'N_FacilitiesNearBy.Park.'
@@ -235,18 +287,31 @@ preprocessing <- function(data){
                            'N_FacilitiesNearBy.Hospital.',
                            'N_FacilitiesNearBy.ETC.'
   )
-  data <- data %>% mutate(N_FacilitiesNearby.corr_pos = 
-                              N_FacilitiesNearBy.Dpartmentstore. + 
-                              N_FacilitiesNearBy.Mall.+
-                              N_FacilitiesNearBy.Park.
-  )  
-  data <- data %>% mutate(N_FacilitiesNearby.corr_neg = 
-                              N_FacilitiesNearBy.PublicOffice. + 
-                              N_FacilitiesNearBy.Hospital.+
-                              N_FacilitiesNearBy.Park.
-  )  
+  data$N_FacilitiesNearby.corr_pos <- data %>%
+    dplyr::select(all_of(corr_pos_Facilities)) %>%
+    rowSums()
+  data$N_FacilitiesNearby.corr_neg <- data %>%
+    dplyr::select(all_of(corr_neg_Facilities)) %>%
+    rowSums()
   
-  
-  ##### N_SchoolNearBy.Total. #####
+  # 0 vs 3à9 vs 11à16
+  group1 <- c(0)
+  group2 <- c(3,6,7,8,9)
+  group3 <- c(11,12,13,14,16)
+  data <- data %>% 
+    mutate(N_FacilitiesNearBy.Total._cut = if_else(N_FacilitiesNearBy.Total. %in% group1, 'none',
+                                                   if_else(N_FacilitiesNearBy.Total. %in% group2, 'some', 
+                                                           'loads')))
 
+  ##### N_SchoolNearBy.Total. #####
+  # no modification. an idea is to only keep N_SchoolNearBy.Total.
+  
+  # OUTPUT
+  return(data)
+}
+
+factorize <- function(data){
+  data <- data %>%
+    mutate_if(is.character, as.factor)
+  return(data)
 }

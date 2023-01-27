@@ -19,53 +19,126 @@ params:
   path_R_folder: "../R/"
 ---
 
+# Parameters
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
 
 source(paste(params$path_R_folder,"libraries.R", sep=''))
 source(paste(params$path_R_folder,"functions.R", sep=''))
+source(paste(params$path_R_folder,"preprocessing.R", sep=''))
 set.seed(2022)
 
-train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+init_train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
                    header=TRUE, 
                    sep=",")
-test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
                   header=TRUE, 
                   sep=",")
 
 target <- 'SalePrice'
+train <- set_numerics(init_train, num_vars)
 ```
 
 
+# No modification
+
+### lm
 ```{r}
-lm_all = lm(SalePrice ~., data = train)
-lm_all %>% summary
+model = lm(SalePrice ~., data = init_train)
+model %>% summary
 
-lm_all_pred <- lm_all %>%
-  predict(newdata=test)
+model_pred <- model %>%
+  predict(newdata=init_test)
 
-RMSE(lm_all_pred, test$SalePrice)
+RMSE(model_pred, init_test$SalePrice)
 ```
+
+### stepAIC
+```{r}
+model0 <- lm(SalePrice~1, train)
+model <- stepAIC(model0, direction="forward", trace=TRUE)
+
+model_pred <- predict(model, newdata=test)
+
+RMSE(model_pred, test$SalePrice)
+```
+```{r}
+
+```
+
+
+# Only numeric
 ```{r}
 train_quant <- train %>%
   select_if(is.numeric)
 
-lm_quant <- lm(SalePrice ~ ., train_quant)
-lm_quant %>% summary
+model <- lm(SalePrice ~ ., train_quant)
+model %>% summary
 
-lm_quant_pred <- lm_quant %>%
+model_pred <- model %>%
   predict(newdata=test)
 
-RMSE(lm_quant_pred, test$SalePrice)
+RMSE(model_pred, test$SalePrice)
+```
+# Num as Quant
+```{r}
+train <- set_numerics(train, num_vars)
+
+model.train <- train %>% select_if(is.numeric)
+
+model <- lm(SalePrice~., model.train)
+model %>% summary
+
+test <- set_numerics(test, num_vars)
+model_pred <- predict(model, newdata = test)
+
+RMSE(model_pred, test$SalePrice)
+```
+```{r}
+train
+
+```
+
+# With preproc - all
+```{r}
+train <- train %>% preprocessing()
+train <- train %>% factorize()
+
+model <- lm(SalePrice ~., train)
+model %>% summary()
+
+test <- test %>% set_numerics(num_vars)
+test <- test %>% preprocessing()
+test <- test %>% factorize
+
+model_pred <- predict(model, newdata=test)
+
+RMSE(model_pred, test$SalePrice)
 ```
 
 ```{r}
-step_model <- stepAIC(lm_quant, direction="both", trace=TRUE)
+train <- init_train
+train <- train %>% set_numerics(num_vars)
+train <- train %>% preprocessing
+train <- train %>% factorize
 
-step_model_pred <- step_model %>%
-  predict(newdata=test)
+sel_vars <- train %>% colnames %>% sample(20, replace=F)
 
-RMSE(step_model_pred, test$SalePrice)
+formula <- paste(target, '~', sep = " ")
+for(i in seq_along(sel_vars)){
+  ifelse(i==1,
+         formula <- paste(formula, sel_vars[i], sep = ' '),
+         formula <- paste(formula, sel_vars[i], sep = ' + '))
+}; rm(i)
+formula <- as.formula(formula)
+formula
+
+model0 <- lm(formula, train)
+model0 %>% summary
+
+stepAIC(model0, direction='both', trace=T)
 ```
+
+
 
 

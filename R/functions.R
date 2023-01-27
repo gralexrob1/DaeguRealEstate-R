@@ -1,46 +1,24 @@
-set_numerics <- function(data){
-  list(
-    'SalePrice',
-    'Size.sqf.',
-    'YearBuilt',
-    'YrSold',
-    'MonthSold',
-    'N_FacilitiesNearBy.PublicOffice.',
-    'N_FacilitiesNearBy.Hospital.',
-    'N_FacilitiesNearBy.Dpartmentstore.',
-    'N_FacilitiesNearBy.Mall.',
-    'N_FacilitiesNearBy.ETC.',
-    'N_FacilitiesNearBy.Park.',
-    'N_SchoolNearBy.Elementary.',
-    'N_SchoolNearBy.Middle.',
-    'N_SchoolNearBy.High.',
-    'N_SchoolNearBy.University.',
-    'N_FacilitiesInApt',
-    'N_FacilitiesNearBy.Total.',
-    'N_SchoolNearBy.Total.',
-    'N_Parkinglot.Ground.',
-    'N_Parkinglot.Basement.',
-    'N_APT',
-    'N_manager',
-    'N_elevators',
-    'Floor'
-  ) -> quantitative_vars
-  
-  list(
-    'HallwayType',
-    'HeatingType',
-    'AptManageType',
-    'TimeToBusStop',
-    'TimeToSubway',
-    'SubwayStation'
-  ) -> qualitative_vars
-  
-  stopifnot(length(quantitative_vars) + length(qualitative_vars) == length(data))
-  
-  for (var in quantitative_vars)
+set_numerics <- function(data, vars){
+  for (var in vars)
     data[,var] <- data[,var] %>% as.numeric()
   
   return(data)
+}
+
+get_correlation <- function(data){
+  #' Return correlation matrix
+  #' 
+  #' @param data A data.frame
+  
+  correlation_matrix = data %>% 
+    select_if(is.numeric) %>% 
+    cor(method='spearman')
+  
+  corrplot(correlation_matrix, 
+           order="hclust", 
+           tl.cex = 0.4, 
+           type='upper'
+           )
 }
 
 
