@@ -65,3 +65,11 @@ cor_qual <- function(df, var_quant, var_qual){
 #   geom_smooth()
 
 
+
+delete_variables <- function(data, vars){
+  for(var in vars) {
+    data <-  data[, -which(names(data) == var)]
+  }
+  return(data)
+}
+

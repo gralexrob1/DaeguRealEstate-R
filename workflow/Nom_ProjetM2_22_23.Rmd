@@ -10,7 +10,8 @@ output:
     css: "../style/style.css"
     orientation: rows
     theme: readable
-    vertical_layout: fill
+    vertical_layout: scroll
+    smooth_scroll: True
 fontsize: 12pt    
 header-includes:
 - \usepackage{pifont}
@@ -19,46 +20,47 @@ header-includes:
 - \usepackage{systeme}
 - \usepackage{txfonts}
 - \newcommand{\cH}{\mathcal{H}}
+params:
+  path_data_folder: "../data/"
+  path_R_folder: "../R/"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+
+source(paste(params$path_R_folder,"libraries.R", sep=''))
 ```
 
 
 Présentation
 ============
-Le jeu de données concerne la vente de 5891 logements et de 29 variables explicatives décrivant (presque) tous les aspects de ce logement et de son environnement en Corée du Sud dans la ville de Daegu, sur une période de 10 ans.
+Le jeu de données concerne la vente de 5891 logements et de 29 variables explicatives décrivant (presque) toutes les caractéristiques des logements et de leur environnement en Corée du Sud dans la ville de Daegu, sur une période de 10 ans.
 
-L'objectif est de prédire le prix de vente et d'obtenir le modèle qui aura le plus petit \textbf{RMSE}.
-
-
-Les données
-===========
- 
+L'objectif est de prédire le prix de vente d'un logement à partir de ces données et d'obtenir le meilleur modèle possible.
 
 
-L'étude
--------
+Données
+=======
 
-
-
+Column 
+------
 ### But de l'étude
+Il y a 2 jeux de données :
+- Le jeu d'entraînement (4189 observations), à partir duquel nous construisons un modèle.
+- Le jeu de test (1702 observations), que nous utiliserons pour tester la solidité de notre modèle.
 
-
-
- Vous devez contruire un (ou 2 modèles) qui permet de calculer le prix de vente du logement ( $Y$=\textbf{SalePrice})  en fonction de toutes ou une partie des variables (regresseurs/facteurs) contenues dans le jeu de données. Il y a 2 jeux de données :
-
-- Le "train" avec 4189 observations, à partir duquel vous devez contruire votre modèle final 
-- Le "test" avec 1702 observations, que vous ne devez pas utiliser pour contruire votre modèle.
-
-Deuxième colonne
-----------------
-
-### Col2 titre 2
-```{r}
+Column
+------
+### Description
+```{r, echo=F, include=T}
+descr <- read.csv2(paste(params$path_data_folder, "descr.csv",sep=''),
+                   header=TRUE, 
+                   sep=";")
+descr %>% kable
 ```
 
+Modèle
+======
 
-```{r}
-```
+Conclusion
+==========

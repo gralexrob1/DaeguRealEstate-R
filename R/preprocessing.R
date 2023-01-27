@@ -279,20 +279,8 @@ preprocessing <- function(data){
   
   ##### N_FacilitiesNearBy.Total. #####
   # idea: merge variables correlated to target with same sign
-  corr_pos_Facilities <- c('N_FacilitiesNearBy.Dpartmentstore.',
-                           'N_FacilitiesNearBy.Mall.',
-                           'N_FacilitiesNearBy.Park.'
-  )
-  corr_neg_Facilities <- c('N_FacilitiesNearBy.PublicOffice.',
-                           'N_FacilitiesNearBy.Hospital.',
-                           'N_FacilitiesNearBy.ETC.'
-  )
-  data$N_FacilitiesNearby.corr_pos <- data %>%
-    dplyr::select(all_of(corr_pos_Facilities)) %>%
-    rowSums()
-  data$N_FacilitiesNearby.corr_neg <- data %>%
-    dplyr::select(all_of(corr_neg_Facilities)) %>%
-    rowSums()
+  
+
   
   # 0 vs 3à9 vs 11à16
   group1 <- c(0)
@@ -309,6 +297,45 @@ preprocessing <- function(data){
   # OUTPUT
   return(data)
 }
+
+
+preprocess.N_Facilities_Nearby <- function(data, strat=NULL, drop=TRUE){
+  #' Preprocesses cluster N_FacilitiesNearBy
+  #'
+  #' @param data A data.frame
+  #' @param strat Corresponds to the preprocessing strategy
+  #' @param drop Should obsolete columns be dropped
+  
+  if(is.null(strat))
+    return(data)
+  
+  total <- c('N_FacilitiesNearBy.Total.')
+  
+  corr_pos <- c('N_FacilitiesNearBy.Dpartmentstore.',
+                'N_FacilitiesNearBy.Mall.',
+                'N_FacilitiesNearBy.Park.'
+  )
+  corr_neg <- c('N_FacilitiesNearBy.PublicOffice.',
+                'N_FacilitiesNearBy.Hospital.',
+                'N_FacilitiesNearBy.ETC.'
+  )
+  if(strat=='corr'){
+    data$N_FacilitiesNearby.corr_pos <- data %>%
+      dplyr::select(all_of(corr_pos)) %>%
+      rowSums()
+    data$N_FacilitiesNearby.corr_neg <- data %>%
+      dplyr::select(all_of(corr_neg)) %>%
+      rowSums()
+    
+    if(drop){
+      data <- data %>%
+        dplyr::select(-which(names(data) %in% c(corr_pos, corr_neg, total)))
+    }
+    return(data)
+  }
+}
+
+
 
 factorize <- function(data){
   data <- data %>%

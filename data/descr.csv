@@ -1,0 +1,31 @@
+﻿Variable;Libellé
+SalePrice;Prix de vente du logement en $ (Target)
+YearBuilt;Année de construction du logement
+YrSold;Année de vente du logement 
+MonthSold;Mois de vente du logement
+Size.sqf.;Taille du logement en m2 
+Floor;Etage où est situé le logement
+HallwayType;Type de couloirs : ‘terraced’, ‘corridor’, ‘mixed’
+HeatingType;Type de chauffage : ‘individual_heating’,’central_heating’
+AptManageType;Type de gestion de l’appartement : ‘self_management’, ‘management_in_trust’
+N_Parkinglot.Ground.;Nombre de places de parking disponible au niveau 0
+N_Parkinglot.Basement.;Nombre de places de parking disponible au sous-sol
+TimeToBusStop;Fourchette de temps pour aller du logement à l’arrêt de bus le plus proche
+TimeToSubway;Fourchette de temps pour aller du logement à la station de métro la plus proche
+N_APT;Nombre d’appartement dans l’immeuble/la résidence
+N_manager;Nombre de personnes gérant l’appartement (Sécurité, ménage,)
+N_elevators;Nombre d’ascenseur dans l’immeuble/la résidence
+SubwayStation;Station de métro la plus proche
+N_FacilitiesNearBy.PublicOffice. ;Nombre de bureaux public à proximité
+N_FacilitiesNearBy.Hospital. ;Nombre d’hopitaux à proximité
+N_FacilitiesNearBy.Dpartmentstore. ;Nombre de grands magasins à proximité
+N_FacilitiesNearBy.Mall. ;Nombre de centre commerciaux à proximité
+N_FacilitiesNearBy.ETC. ;Nombre d’installations ETC à proximité 
+N_FacilitiesNearBy.Park. ;Nombre de parcs à proximité
+N_SchoolNearBy.Elementary. ;Nombre d’écoles élémentaires à proximité
+N_SchoolNearBy.Middle. ;Nombre de collèges à proximité
+N_SchoolNearBy.High. ;Nombre de lycées à proximité
+N_SchoolNearBy.University. ;Nombre d’universités à proximité
+N_FacilitiesInApt ;Nombre d’installations dans la résidence (Piscine, salle de sport, …)
+N_FacilitiesNearBy.Total. ;Nombre total d’installations à proximité
+N_SchoolNearBy.Total. ;Nombre total d’écoles à proximité

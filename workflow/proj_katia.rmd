@@ -19,54 +19,63 @@ params:
   path_R_folder: "../R/"
 ---
 
-# Paremeters
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
 
-source(paste(params$path_R_folder,"libraries.R", sep=''))
-source(paste(params$path_R_folder,"functions.R", sep=''))
-source(paste(params$path_R_folder,"preprocessing.R", sep=''))
+#rm(list=ls())
+#source(paste(params$path_R_folder,"libraries.R", sep=''))
+#source(paste(params$path_R_folder,"functions.R", sep=''))
 set.seed(2022)
 
-init_train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
                    header=TRUE, 
                    sep=",")
-init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
                   header=TRUE, 
                   sep=",")
 
+train <- set_numerics(train)
+test=set_numerics(test)
 target <- 'SalePrice'
-train <- set_numerics(init_train, num_vars)
-```
-```{r}
-library(dplyr)
-data <- train
 
-# Créer un tableau de contingence
-contingency_table <- data %>% 
-  count(N_Parkinglot.Basement., N_manager)
 
-#Calculer la fréquence observée pour chaque cellule
-contingency_table <- contingency_table %>%
-  mutate(freq_obs = n / sum(n))
+####Modele lineaire naif
+set.seed(2022)
+linear_model_base = lm(SalePrice ~., data = train)
+summary(linear_model_base)
+linear_pred_base <- predict(linear_model_base, newdata = test)
+print(RMSE(linear_pred_base, test$SalePrice))
+#RMSE 36 393
+####
 
-#Calculer les fréquences attendues pour chaque cellule
-contingency_table <- contingency_table %>%
-  group_by(N_Parkinglot.Basement.) %>%
-  mutate(freq_exp_col = n / sum(n)) %>%
-  ungroup() %>%
-  group_by(N_manager) %>%
-  mutate(freq_exp_row = n / sum(n)) %>%
-  ungroup() %>%
-  mutate(freq_exp = freq_exp_col * freq_exp_row * sum(n))
 
-#Calculer l'indice de contingence
-contingency_table$indice_contingence <- (contingency_table$freq_obs - contingency_table$freq_exp) / contingency_table$freq_exp
+#Version ou on retire les valeurs qui sont hors de la fenetre interquartile
 
-#Afficher le tableau
-contingency_table
+Q1 <- quantile(train$SalePrice, probs = 0.25)
+Q3 <- quantile(train$SalePrice, probs = 0.75)
+IQR <- Q3-Q1
 
-# table(train$N_Parkinglot.Basement.,train$N_manager)
+
+
+train_IQ = filter(train, SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR)
+test_IQ = filter(test, SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR)
+
+train=train_IQ
+test=test_IQ
+
+####Modele lineaire naif avec IQ
+set.seed(2022)
+linear_model_base_IQ = lm(SalePrice ~., data = train_IQ)
+summary(linear_model_base_IQ)
+linear_pred_base_IQ <- predict(linear_model_base_IQ, newdata = test_IQ)
+print(RMSE(linear_pred_base_IQ, test_IQ$SalePrice))
+#RMSE 36 304
+####
+
+
+
+
+
 ```
 
 # EDA
@@ -74,14 +83,281 @@ contingency_table
 train %>% head()
 train %>% str()
 train %>% summary()
+
+train <- set_numerics(train)
+train %>% head
 ```
+
+```{r}
+####Strategies 1
+
+#Variables a enlever
+
+
+strategies =list()
+
+strategies$YearBuilt = list(strategy = list(breaks = c(-Inf, 2005, Inf)),
+                                            strategy_type = 'numerical')
+#strategies$YearBuilt = list(breaks = c(-Inf, 2010, 2013, Inf))
+strategies$YrSold = list(strategy = list(breaks = c(-Inf, 2011, 2014, Inf)),
+                         strategy_type = 'numerical')
+#strategies$YrSold = list(breaks = c(-Inf, 2013, Inf))
+
+strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+                               "10min~15min" = "other",
+                               "15min~20min" = "other",
+                               "5min~10min" = "other",
+                               "no_bus_stop_nearby" = "other"),
+                               strategy_type = 'categorical')
+
+#strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+#                               "10min-15min" = "other",
+#                               "15min-20min" = "other",
+#                               "5min-10min" = "other",
+#                               "no_bus_stop_nearby" = "no_bus_stop_nearby"),
+#                              strategy_type = 'categorical')
+
+
+strategies$N_manager = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                            strategy_type = 'numerical')
+
+
+
+strategies$SubwayStation = list(strategy = list("Chil-sung-market" = "low",
+                                "Daegu" = "1ow",
+                                "Bangoge" = 'medium',
+                                "Myung-duk" = "medium",
+                                "Banwoldang" = 'high',
+                                "Kyungbuk_uni_hospital" = 'high',
+                                "no_subway_nearby" = 'high',
+                                "Sin-nam" = 'high'),
+                                strategy_type = 'categorical')
+
+
+
+strategies$N_FacilitiesNearBy.PublicOffice. = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                                                   strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.High. = list(strategy =list(breaks = c(-Inf, 2, Inf)),
+                                        strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.University. = list(strategy = list(breaks = c(-Inf, 2, Inf)),
+                                        strategy_type = 'numerical')
+strategies$N_FacilitiesInApt = list(strategy = list(breaks = c(-Inf, 3, 8, Inf)),
+                                        strategy_type = 'numerical')
+
+train_bis1$HallwayType=as.factor(train_bis1$HallwayType)
+train_bis1$HeatingType=as.factor(train_bis1$HeatingType)
+train_bis1$AptManageType=as.factor(train_bis1$AptManageType)
+train_bis1$TimeToBusStop=as.factor(train_bis1$TimeToBusStop)
+
+###On categorise
+train_bis1 = modify_categories(train_IQ, strategies)
+test_bis1 = modify_categories(test_IQ, strategies)
+
+###On enleve des variables
+list_variables_todelete = c("MonthSold","N_APT" ,"N_FacilitiesNearBy.Total.","N_SchoolNearBy.Elementary.","N_SchoolNearBy.Middle.","N_SchoolNearBy.Total.")
+
+train_bis1 = delete_variables(train_bis1,list_variables_todelete)
+test_bis1 = delete_variables(test_bis1,list_variables_todelete)
+
+set.seed(2022)
+linear_model_1 = lm(SalePrice ~., data = train_bis1)
+linear_pred_1 <- predict(linear_model_1, newdata = test_bis1)
+print(RMSE(linear_pred_1, test_bis1$SalePrice))
+ #RMSE 36 097 
+
+```
+```{r}
+#Stratégie 2
+
+strategies =list()
+
+train_IQ$YearBuilt <- as.factor(train_IQ$YearBuilt)
+train_IQ$YrSold<- as.factor(train_IQ$YrSold)
+
+test_IQ$YearBuilt <- as.factor(test_IQ$YearBuilt)
+test_IQ$YrSold<- as.factor(test_IQ$YrSold)
+
+strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+                               "10min~15min" = "other",
+                               "15min~20min" = "other",
+                               "5min~10min" = "other",
+                               "no_bus_stop_nearby" = "other"),
+                               strategy_type = 'categorical')
+
+#strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+ #                             "10min-15min" = "other",
+  #                             "15min-20min" = "other",
+   #                            "5min-10min" = "other",
+    #                           "no_bus_stop_nearby" = "no_bus_stop_nearby"),
+     #                        strategy_type = 'categorical')
+
+
+strategies$N_manager = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                           strategy_type = 'numerical')
+
+strategies$SubwayStation = list(strategy = list("Chil-sung-market" = "low",
+                                "Daegu" = "1ow",
+                               "Bangoge" = 'medium',
+                                "Myung-duk" = "medium",
+                                "Banwoldang" = 'high',
+                                "Kyungbuk_uni_hospital" = 'high',
+                                "no_subway_nearby" = 'high',
+                                "Sin-nam" = 'high'),
+                                strategy_type = 'categorical')
+
+
+
+strategies$N_FacilitiesNearBy.PublicOffice. = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                                                   strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.High. = list(strategy =list(breaks = c(-Inf, 2, Inf)),
+                                       strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.University. = list(strategy = list(breaks = c(-Inf, 2, Inf)),
+                                       strategy_type = 'numerical')
+strategies$N_FacilitiesInApt = list(strategy = list(breaks = c(-Inf, 3, 8, Inf)),
+                                        strategy_type = 'numerical')
+
+
+###On categorise
+train_bis1 = modify_categories(train_IQ, strategies)
+test_bis1 = modify_categories(test_IQ, strategies)
+
+###on factorise
+train_bis1$HallwayType=as.factor(train_bis1$HallwayType)
+train_bis1$HeatingType=as.factor(train_bis1$HeatingType)
+train_bis1$AptManageType=as.factor(train_bis1$AptManageType)
+train_bis1$TimeToBusStop=as.factor(train_bis1$TimeToBusStop)
+train_bis1$N_manager=as.factor(train_bis1$N_manager)
+train_bis1$N_FacilitiesNearBy.Hospital.=as.factor(train_bis1$N_FacilitiesNearBy.Hospital.)
+train_bis1$N_FacilitiesNearBy.Dpartmentstore.=as.factor(train_bis1$N_FacilitiesNearBy.Dpartmentstore.)
+train_bis1$N_FacilitiesNearBy.Mall.=as.factor(train_bis1$N_FacilitiesNearBy.Mall.)
+train_bis1$N_FacilitiesNearBy.ETC.=as.factor(train_bis1$N_FacilitiesNearBy.ETC.)
+train_bis1$N_FacilitiesNearBy.Park.=as.factor(train_bis1$N_FacilitiesNearBy.Park.)
+
+
+#train_bis1$MonthSold=as.factor(train_bis1$MonthSold)
+
+test_bis1$HallwayType=as.factor(test_bis1$HallwayType)
+test_bis1$HeatingType=as.factor(test_bis1$HeatingType)
+test_bis1$AptManageType=as.factor(test_bis1$AptManageType)
+test_bis1$TimeToBusStop=as.factor(test_bis1$TimeToBusStop)
+test_bis1$N_manager=as.factor(test_bis1$N_manager)
+test_bis1$N_FacilitiesNearBy.Hospital.=as.factor(test_bis1$N_FacilitiesNearBy.Hospital.)
+test_bis1$N_FacilitiesNearBy.Dpartmentstore.=as.factor(test_bis1$N_FacilitiesNearBy.Dpartmentstore.)
+test_bis1$N_FacilitiesNearBy.Mall.=as.factor(test_bis1$N_FacilitiesNearBy.Mall.)
+test_bis1$N_FacilitiesNearBy.ETC.=as.factor(test_bis1$N_FacilitiesNearBy.ETC.)
+test_bis1$N_FacilitiesNearBy.Park.=as.factor(test_bis1$N_FacilitiesNearBy.Park.)
+
+
+
+#test_bis1$MonthSold=as.factor(test_bis1$MonthSold)
+
+###On enleve des variables
+list_variables_todelete = c("N_elevators","N_FacilitiesNearBy.Total.","N_SchoolNearBy.Elementary.","N_SchoolNearBy.Middle.","N_SchoolNearBy.Total.")
+
+
+train_bis1 = delete_variables(train_bis1,list_variables_todelete)
+test_bis1 = delete_variables(test_bis1,list_variables_todelete)
+
+set.seed(2022)
+linear_model_1 = lm(SalePrice ~., data = train_bis1)
+linear_pred_1 <- predict(linear_model_1, newdata = test_bis1)
+print(RMSE(linear_pred_1, test_bis1$SalePrice))
+
+
+```
+```{r}
+#Stratégie 3
+
+strategies =list()
+
+train_IQ$YearBuilt <- as.factor(train_IQ$YearBuilt)
+train_IQ$YrSold<- as.factor(train_IQ$YrSold)
+
+test_IQ$YearBuilt <- as.factor(test_IQ$YearBuilt)
+test_IQ$YrSold<- as.factor(test_IQ$YrSold)
+
+strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+                               "10min~15min" = "other",
+                               "15min~20min" = "other",
+                               "5min~10min" = "other",
+                               "no_bus_stop_nearby" = "other"),
+                               strategy_type = 'categorical')
+
+#strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+ #                             "10min-15min" = "other",
+  #                             "15min-20min" = "other",
+   #                            "5min-10min" = "other",
+    #                           "no_bus_stop_nearby" = "no_bus_stop_nearby"),
+     #                        strategy_type = 'categorical')
+
+
+strategies$N_manager = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                           strategy_type = 'numerical')
+
+#strategies$SubwayStation = list(strategy = list("Chil-sung-market" = "low",
+ #                               "Daegu" = "1ow",
+  #                              "Bangoge" = 'medium',
+   #                             "Myung-duk" = "medium",
+    #                            "Banwoldang" = 'high',
+     #                           "Kyungbuk_uni_hospital" = 'high',
+      #                          "no_subway_nearby" = 'high',
+       #                         "Sin-nam" = 'high'),
+        #                        strategy_type = 'categorical')
+
+
+
+#strategies$N_FacilitiesNearBy.PublicOffice. = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+ #                                                  strategy_type = 'numerical')
+                                                   
+#strategies$N_SchoolNearBy.High. = list(strategy =list(breaks = c(-Inf, 2, Inf)),
+ #                                       strategy_type = 'numerical')
+                                                   
+#strategies$N_SchoolNearBy.University. = list(strategy = list(breaks = c(-Inf, 2, Inf)),
+ #                                       strategy_type = 'numerical')
+#strategies$N_FacilitiesInApt = list(strategy = list(breaks = c(-Inf, 3, 8, Inf)),
+ #                                       strategy_type = 'numerical')
+
+train_bis1$HallwayType=as.factor(train_bis1$HallwayType)
+train_bis1$HeatingType=as.factor(train_bis1$HeatingType)
+train_bis1$AptManageType=as.factor(train_bis1$AptManageType)
+train_bis1$TimeToBusStop=as.factor(train_bis1$TimeToBusStop)
+#train_bis1$TimeToBusStop=as.factor(train_bis1$N_manager)
+
+###On categorise
+train_bis1 = modify_categories(train_IQ, strategies)
+test_bis1 = modify_categories(test_IQ, strategies)
+
+###On enleve des variables
+list_variables_todelete = c("MonthSold","N_APT" ,"N_FacilitiesNearBy.Total.","N_SchoolNearBy.Elementary.","N_SchoolNearBy.Middle.","N_SchoolNearBy.Total.")
+
+train_bis1 = delete_variables(train_bis1,list_variables_todelete)
+test_bis1 = delete_variables(test_bis1,list_variables_todelete)
+
+set.seed(2022)
+linear_model_1 = lm(SalePrice ~., data = train_bis1)
+linear_pred_1 <- predict(linear_model_1, newdata = test_bis1)
+print(RMSE(linear_pred_1, test_bis1$SalePrice))
+
+```
+
 
 ### Correlation
 ```{r}
-png('../plot/full_corrplot.png')
-get_correlation(train)
+train <- set_numerics(train)
 
-# dev.off()
+correlation_matrix = train %>% 
+  select_if(is.numeric) %>% 
+  cor(method='spearman')
+
+corrplot(correlation_matrix, 
+         order="hclust", 
+         tl.cex = 0.4, 
+         type='upper'
+         )
 ```
 
 # EDA by var
@@ -90,20 +366,12 @@ get_correlation(train)
 ```{r}
 var <- 'SalePrice'
 
-train <- init_train
-train <- train %>% set_numerics(num_vars)
-
-train <- train %>% mutate(SalePrice = sqrt(SalePrice))
-
 train[,var] %>% str
 train[,var] %>% summary
-train
 
-hist_and_density(train, var, binwidth=50)
+hist_and_density(train, var^0.5, binwidth=10000)
+hist((train$"SalePrice")^0.5)
 
-ggplot(train, aes(x=train[,var], fill=train[,var])) +
-  geom_boxplot() +
-  labs(x=var)
 
 if(!require(tseries)){install.packages('tseries')}
 jarque.bera.test(train[,var])
@@ -134,6 +402,23 @@ train[,var] <- train[,var] %>% as.numeric
 
 ridgeline(train[,target], train[,var])
 ```
+```{r}
+# avant 2000, après 2010
+train <- train %>%
+  mutate(YearBuilt_2000_2010 = if_else(YearBuilt<=2000, "ante2000", 
+                                  ifelse(YearBuilt<=2010, "2000to2010", "post2010")
+                                  )
+         )
+train$YearBuilt_2000_2010 <- train$YearBuilt_2000_2010 %>%
+  as.factor()
+
+# avant après 2000
+train <- train %>%
+  mutate(YearBuilt_2005 = if_else(YearBuilt<=2005, "ante2005", "post2005"))
+
+train$YearBuilt_2005 <- train$YearBuilt_2005 %>%
+  as.factor()
+```
 
 
 ### YrSold
@@ -160,6 +445,22 @@ train[,var] <- train[,var] %>% as.numeric
 ridgeline(train[,target], train[,var])
 ```
 
+```{r}
+# méthode des deux quantiles 33% et 66%
+train <- train %>%
+  mutate(YrSold_2011_2014 = if_else(YrSold < 2011, "ante2011", 
+                                  ifelse(YrSold < 2014, "2011to2014", "post2014")
+                                  )
+         )
+train$YrSold_2011_2014 <- train$YrSold_2011_2014 %>%
+  as.factor()
+
+# méthode 50/50
+train <- train %>%
+  mutate(YrSold_2013 = if_else(YrSold < 2013, "ante2013", "post2013"))
+train$YrSold_2013 <- train$YrSold_2013 %>%
+  as.factor()
+```
 
 ### MonthSold
 dropped cause weak correlation to target
@@ -195,14 +496,22 @@ var <- 'Size.sqf.'
 train[,var] %>% str
 train[,var] %>% summary
 
-hist_and_density(train, var, binwidth=100)
+hist_and_density(train_IQ, var, binwidth=100)
 
-ggplot(train, aes(x=train[,var], fill=train[,var])) +
+ggplot(train_IQ, aes(x=train_IQ[,var], fill=train_IQ[,var])) +
   geom_boxplot()
 
 ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_point() +
   geom_smooth(method='lm')
+
+
+Q1 <- quantile(train$Size.sqf., probs = 0.25)
+Q3 <- quantile(train$Size.sqf., probs = 0.75)
+IQR <- Q3-Q1
+
+train_IQ = filter(train_IQ, Size.sqf. > Q1 - 1.5 * IQR & Size.sqf. < Q3 + 1.5 * IQR)
+test_IQ = filter(test_IQ, Size.sqf. > Q1 - 1.5 * IQR & Size.sqf. < Q3 + 1.5 * IQR)
 ```
 
 ### Floor
@@ -313,7 +622,6 @@ train[,var] %>% str
 train[,var] %>% summary
 train[,var] %>% unique
 train[,var] %>% quantile
-cor_qual(train, target, var)
 
 ggplot(train, aes(train[,var])) +
   geom_bar() +
@@ -327,20 +635,18 @@ train[,var] <- train[,var] %>% as.character
 boxplot_mano(train, target, var)
 train[,var] <- train[,var] %>% as.numeric
 
-ridgeline::ridgeline(train[,target], train[,var])
+ridgeline(train[,target], train[,var])
 
 
 # if numeric
-hist_and_density(train, var, binwidth=1)
+hist_and_density(train, var, binwidth=20)
 
 ggplot(train, aes(x=train[,var], fill=train[,var])) +
-  geom_boxplot() +
-  labs(x=var)
+  geom_boxplot()
 
 ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_point() +
-  geom_smooth(method='lm') +
-  labs(x=var, y=target)
+  geom_smooth(method='lm')
 ```
 
 ### N_Parkinglot.Basement.
@@ -429,6 +735,8 @@ boxplot_mano(train, target, var)
 ridgeline(train[,target], train[,var])
 ```
 
+
+
 ### N_APT
 cor 5%. on ne touche pas ça partira tout seul.
 
@@ -502,6 +810,7 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
 ```
 
 
+
 ### N_elevators
 NO idea what to say
 
@@ -563,7 +872,9 @@ boxplot_mano(train, target, var)
 
 ridgeline(train[,target], train[,var])
 ```
-
+Chilseong - Daegu
+Bangoge - Myungduk - 
+banwoldang - hospital - sinnam + no
 
 
 ### N_FacilitiesNearBy.PublicOffice.
@@ -602,6 +913,10 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+
+Découpage
+[0,1,2,3,4] - [5,6,7]
+[1,2,3] [5,6,7] [0,4]
 
 
 ### N_FacilitiesNearBy.Hospital.
@@ -649,7 +964,8 @@ train_2 <- train %>%
 
 t.test(train_1[,target], train_2[,target], var.equal=F)
 ```
-
+0 vs 1+2
+NO regroupement
 
 ### N_FacilitiesNearBy.Dpartmentstore.
 ```{r}
@@ -687,7 +1003,8 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-
+0 vs 1 vs 2
+0,1 vs 2
 
 ### N_FacilitiesNearBy.Mall.
 ```{r}
@@ -725,6 +1042,9 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+do not touch
+delete ?
+very weak correlation
 
 ### N_FacilitiesNearBy.ETC.
 ```{r}
@@ -800,6 +1120,8 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+0,1 vs 2
+also keep
 
 ### N_SchoolNearBy.Elementary.
 ```{r}
@@ -837,6 +1159,7 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+on garde tout ou numérique, tester les deux
 
 
 ### N_SchoolNearBy.Middle.
@@ -875,6 +1198,8 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+0 vs 1,2,3 vs 4
+ou num
 
 ### N_SchoolNearBy.High.
 ```{r}
@@ -912,6 +1237,8 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+Interprétabilité du 0 complexe
+[0,] - [1,2] - 3,4,5
 
 ### N_SchoolNearBy.University.
 ```{r}
@@ -949,6 +1276,9 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
+Découpage
+[0,1,2] vs 3,4,5
+0 vs 1,2 vs 3,4,5
 
 ### N_FacilitiesInApt
 ```{r}
@@ -987,36 +1317,13 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   labs(x=var, y=target)
 ```
 
+Découpage
+[1,2,3] - [4,5,7,8] - [9,10] 
+
+
 ### N_FacilitiesNearBy.Total.
 ```{r}
-corr_pos_Facilities <- c('N_FacilitiesNearBy.Dpartmentstore.',
-                         'N_FacilitiesNearBy.Mall.',
-                         'N_FacilitiesNearBy.Park.'
-                         )
-corr_neg_Facilities <- c('N_FacilitiesNearBy.PublicOffice.',
-                         'N_FacilitiesNearBy.Hospital.',
-                         'N_FacilitiesNearBy.ETC.'
-                         )
-
-# N_FacilitiesInApt not counted
-
-train <- train %>% mutate(N_FacilitiesNearby.corr_pos = 
-                            N_FacilitiesNearBy.Dpartmentstore. + 
-                            N_FacilitiesNearBy.Mall.+
-                            N_FacilitiesNearBy.Park.
-                         )  
-
-train <- train %>% mutate(N_FacilitiesNearby.corr_neg = 
-                            N_FacilitiesNearBy.PublicOffice. + 
-                            N_FacilitiesNearBy.Hospital.+
-                            N_FacilitiesNearBy.Park.
-                         )  
-```
-
-```{r}
 var <- 'N_FacilitiesNearBy.Total.'
-# var <- 'N_FacilitiesNearby.corr_neg'
-# var <- 'N_FacilitiesNearby.corr_pos'
 
 train[,var] %>% str
 train[,var] %>% summary
@@ -1050,18 +1357,13 @@ ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_smooth(method='lm') +
   labs(x=var, y=target)
 ```
-```{r}
-correlation_matrix = train %>% 
-  dplyr::select(starts_with('N_Fac'))
+Notes
+potentiel mix des variables en fonction de la corrélation
+sum_cor_po vs sum_cor_neg
 
-correlation_matrix <- cor(cbind(train$SalePrice, correlation_matrix), method='spearman')
+Sinon
+0 vs 3à9 vs 11à16
 
-corrplot(correlation_matrix, 
-         order="hclust", 
-         tl.cex = 0.4, 
-         type='upper'
-         )
-```
 
 ### N_SchoolNearBy.Total.
 ```{r}
@@ -1163,42 +1465,12 @@ qualitative_vars <- unlist(qualitative_vars)
 quantitative_vars <- unlist(quantitative_vars)
 ```
 
-## EDA for quantitative variables
-```{r}
-train_quant <- train[, quantitative_vars]
-train_quant %>% colnames()
-```
-###
+
+
 
 
 ```{r}
-for(var in train_quant){
-  hist(var)
-}
-```
-```{r}
-ggplot(train_quant) +
-  geom_histogram(aes(SalePrice), binwidth=10000) +
-  geom_density(aes(SalePrice)) 
-```
 
-
-```{r}
-for (var_name in colnames(train_quant)){
-    print(
-      ggplot(train_quant, aes(get(var_name))) +
-        geom_density() +
-        ggtitle(var_name)*
-        # geom_line(aes(Date, get(elem))) +
-        # geom_point(aes(Date, get(elem)))
-
-        # theme_minimal() +
-        # xlab("Date") +
-        # ylab("Values") +
-        # scale_color_manual(values = c("elem"="#B22222"), labels= c(elem)) +
-        # labs(colors = "legends")
-    )
-}
 ```
 
 

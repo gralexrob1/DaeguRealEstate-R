@@ -192,18 +192,10 @@ display: flex;
 .sbframe:not(.active) {
 display: none;
 }
-@media only screen and (min-width: 768px) {
-html, body {
-height: 100%;
-}
-#dashboard-container {
-height: 100%;
-}
-}
 </style>
 
 
-<style type="text/css">Skip to contentSearch or jump to…Pull requestsIssuesCodespacesMarketplaceExplore@gralexrob1 gralexrob1/ModelingPrivateCannot fork because you own this repository and are not a member of any organizations.CodeIssuesPull requestsActionsProjectsSecurityInsightsSettingsModeling/style/style.css@gralexrob1gralexrob1 Final upload internshipLatest commit dd7a04d on Jul 7, 2022History1 contributor31 lines (28 sloc) 649 Bytes.navbar>.container .navbar-brand, .navbar>.container-fluid .navbar-brand {margin-left: 500px;}.navbar-inverse .navbar-brand {color: #333333;font-size: 24px;font-weight: bold;}.chart-title {border-bottom: 1px solid #9e9e9e;color: #666;font-size: 20px;font-weight: BOLD;padding: 7px 10px 4px;}.navbar-nav, .navbar-form {margin-left: 300px;margin-right: 0px;}.value-box {border-radius: 2px;position: relative;display: block;margin-right: 8px;margin-bottom: 8px;margin-top: 65px;box-shadow: 0 1px 1px rgb(0 0 0 / 10%);}</style>
+<style type="text/css">.navbar>.container .navbar-brand, .navbar>.container-fluid .navbar-brand {margin-left: 30px;margin-right: 30px;	}.navbar-inverse .navbar-brand {color: #333333;font-size: 24px;font-weight: bold;}.chart-title {border-bottom: 1px solid #9e9e9e;color: #666;font-size: 20px;font-weight: BOLD;padding: 7px 10px 4px;}.navbar-nav, .navbar-form {margin-left: 30px;margin-right: 0px;}.value-box {border-radius: 2px;position: relative;display: block;margin-right: 8px;margin-bottom: 8px;margin-top: 65px;box-shadow: 0 1px 1px rgb(0 0 0 / 10%);}.chart-shim {overflow-y: scroll;}</style>
 
 </head>
 
@@ -1937,10 +1929,10 @@ sur une période de 10 ans.</p>
 <p>L’objectif est de prédire le prix de vente et d’obtenir le modèle qui
 aura le plus petit .</p>
 </div>
-<div id="les-données" class="section level1">
-<h1>Les données</h1>
-<div id="létude" class="section level2">
-<h2>L’étude</h2>
+<div id="données" class="section level1">
+<h1>Données</h1>
+<div id="column" class="section level2">
+<h2>Column</h2>
 <div id="but-de-létude" class="section level3">
 <h3>But de l’étude</h3>
 <p>Vous devez contruire un (ou 2 modèles) qui permet de calculer le prix
@@ -1955,18 +1947,278 @@ pour contruire votre modèle.</li>
 </ul>
 </div>
 </div>
-<div id="deuxième-colonne" class="section level2">
-<h2>Deuxième colonne</h2>
-<div id="col2-titre-2" class="section level3">
-<h3>Col2 titre 2</h3>
+<div id="column-1" class="section level2">
+<h2>Column</h2>
+<div id="description" class="section level3">
+<h3>Description</h3>
 <div class="knitr-options" data-fig-width="576" data-fig-height="460">
 
 </div>
-<div class="knitr-options" data-fig-width="576" data-fig-height="460">
-
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+Variable
+</th>
+<th style="text-align:left;">
+Libellé
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+SalePrice
+</td>
+<td style="text-align:left;">
+Prix de vente du logement en $ (Target)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+YearBuilt
+</td>
+<td style="text-align:left;">
+Année de construction du logement
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+YrSold
+</td>
+<td style="text-align:left;">
+Année de vente du logement
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MonthSold
+</td>
+<td style="text-align:left;">
+Mois de vente du logement
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Size.sqf.
+</td>
+<td style="text-align:left;">
+Taille du logement en m2
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Floor
+</td>
+<td style="text-align:left;">
+Etage où est situé le logement
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HallwayType
+</td>
+<td style="text-align:left;">
+Type de couloirs : ‘terraced’, ‘corridor’, ‘mixed’
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HeatingType
+</td>
+<td style="text-align:left;">
+Type de chauffage : ‘individual_heating’,’central_heating’
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+AptManageType
+</td>
+<td style="text-align:left;">
+Type de gestion de l’appartement : ‘self_management’,
+‘management_in_trust’
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_Parkinglot.Ground.
+</td>
+<td style="text-align:left;">
+Nombre de places de parking disponible au niveau 0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_Parkinglot.Basement.
+</td>
+<td style="text-align:left;">
+Nombre de places de parking disponible au sous-sol
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+TimeToBusStop
+</td>
+<td style="text-align:left;">
+Fourchette de temps pour aller du logement à l’arrêt de bus le plus
+proche
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+TimeToSubway
+</td>
+<td style="text-align:left;">
+Fourchette de temps pour aller du logement à la station de métro la plus
+proche
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_APT
+</td>
+<td style="text-align:left;">
+Nombre d’appartement dans l’immeuble/la résidence
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_manager
+</td>
+<td style="text-align:left;">
+Nombre de personnes gérant l’appartement (Sécurité, ménage,)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_elevators
+</td>
+<td style="text-align:left;">
+Nombre d’ascenseur dans l’immeuble/la résidence
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SubwayStation
+</td>
+<td style="text-align:left;">
+Station de métro la plus proche
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.PublicOffice. 
+</td>
+<td style="text-align:left;">
+Nombre de bureaux public à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.Hospital. 
+</td>
+<td style="text-align:left;">
+Nombre d’hopitaux à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.Dpartmentstore. 
+</td>
+<td style="text-align:left;">
+Nombre de grands magasins à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.Mall. 
+</td>
+<td style="text-align:left;">
+Nombre de centre commerciaux à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.ETC. 
+</td>
+<td style="text-align:left;">
+Nombre d’installations ETC à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.Park. 
+</td>
+<td style="text-align:left;">
+Nombre de parcs à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_SchoolNearBy.Elementary. 
+</td>
+<td style="text-align:left;">
+Nombre d’écoles élémentaires à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_SchoolNearBy.Middle. 
+</td>
+<td style="text-align:left;">
+Nombre de collèges à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_SchoolNearBy.High. 
+</td>
+<td style="text-align:left;">
+Nombre de lycées à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_SchoolNearBy.University. 
+</td>
+<td style="text-align:left;">
+Nombre d’universités à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesInApt 
+</td>
+<td style="text-align:left;">
+Nombre d’installations dans la résidence (Piscine, salle de sport, …)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_FacilitiesNearBy.Total. 
+</td>
+<td style="text-align:left;">
+Nombre total d’installations à proximité
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+N_SchoolNearBy.Total. 
+</td>
+<td style="text-align:left;">
+Nombre total d’écoles à proximité
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
+<div id="modèle" class="section level1">
+<h1>Modèle</h1>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
 </div>
 
 </div>
@@ -1988,7 +2240,7 @@ $(document).ready(function() {
 <script type="text/javascript">
 $(document).ready(function () {
   FlexDashboard.init({
-    fillPage: true,
+    fillPage: false,
     orientation: "rows",
     storyboard: false,
     defaultFigWidth: 576,
