@@ -19,6 +19,7 @@ get_correlation <- function(data){
            tl.cex = 0.4, 
            type='upper'
            )
+  recordPlot()
 }
 
 

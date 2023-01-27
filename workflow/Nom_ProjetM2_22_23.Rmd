@@ -1,0 +1,64 @@
+---
+title: "Projet M2 2022-23"
+subtitle: 'Modèles pour la régression'
+author: "Pauline CHAUVEAU - François CRESPIN - Alexandre ROBIN - Matteo SAMMUT"
+output: 
+  flexdashboard::flex_dashboard:
+  # 1st level sections (or ======) generate pages
+  # 2nd level sections (or ------) generate columns or rows (text will not be displayed)
+  # 3rd level sections generate boxes
+    css: "../style/style.css"
+    orientation: rows
+    theme: readable
+    vertical_layout: fill
+fontsize: 12pt    
+header-includes:
+- \usepackage{pifont}
+- \usepackage{manfnt}
+- \usepackage{mdframed}
+- \usepackage{systeme}
+- \usepackage{txfonts}
+- \newcommand{\cH}{\mathcal{H}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+```
+
+
+Présentation
+============
+Le jeu de données concerne la vente de 5891 logements et de 29 variables explicatives décrivant (presque) tous les aspects de ce logement et de son environnement en Corée du Sud dans la ville de Daegu, sur une période de 10 ans.
+
+L'objectif est de prédire le prix de vente et d'obtenir le modèle qui aura le plus petit \textbf{RMSE}.
+
+
+Les données
+===========
+ 
+
+
+L'étude
+-------
+
+
+
+### But de l'étude
+
+
+
+ Vous devez contruire un (ou 2 modèles) qui permet de calculer le prix de vente du logement ( $Y$=\textbf{SalePrice})  en fonction de toutes ou une partie des variables (regresseurs/facteurs) contenues dans le jeu de données. Il y a 2 jeux de données :
+
+- Le "train" avec 4189 observations, à partir duquel vous devez contruire votre modèle final 
+- Le "test" avec 1702 observations, que vous ne devez pas utiliser pour contruire votre modèle.
+
+Deuxième colonne
+----------------
+
+### Col2 titre 2
+```{r}
+```
+
+
+```{r}
+```

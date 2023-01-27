@@ -96,7 +96,6 @@ RMSE(model_pred, test$SalePrice)
 ```
 ```{r}
 train
-
 ```
 
 # With preproc - all
@@ -139,6 +138,43 @@ model0 %>% summary
 stepAIC(model0, direction='both', trace=T)
 ```
 
+# One var
+```{r}
+set.seed(2022)
+
+train <- init_train
+train <- train %>% set_numerics(num_vars)
+train <- train %>% preprocessing
+train <- train %>% factorize
+
+test <- init_test
+test <- test %>% set_numerics(num_vars)
+test <- test %>% preprocessing
+test <- test %>% factorize
+
+vars <- colnames(train)
+
+dfRes <- data.frame()
+for(var in vars){
+  formula <- paste(target, '~', sep = " ")
+  formula <- paste(formula, var, sep='+')
+  
+  model <- lm(formula, train)
+  model_pred <- predict(model, newdata=test)
+  
+  rmse <- RMSE(model_pred, test$SalePrice)
+  lRes <- list(target=target, var=var, RMSE=rmse)
+  
+  dfRes <- rbind(dfRes, lRes)
+}
+
+sorted_res <- dfRes[order(dfRes[,'RMSE'], decreasing = FALSE),]
+write.csv(sorted_res, '../output/lm_1var.csv', row.names=F)
+
+sorted_res
+```
+
+
 # Best 2-3 combi
 ```{r}
 require(gtools, install.packages('gtools'))
@@ -161,8 +197,6 @@ get_formula <- function(target, combirow){
   formula <- as.formula(formula)
 }
 ```
-
-
 ```{r}
 train <- init_train
 train <- train %>% set_numerics(num_vars)
@@ -191,8 +225,9 @@ dfRes <- data.frame()
 for(elem in lRes) dfRes <- rbind(dfRes, elem)
 
 sorted_res <- dfRes[order(dfRes[,'RMSE'], decreasing = FALSE),]
-
 write.csv(sorted_res, '../output/lm_2-3vars.csv', row.names=F)
+
+sorted_res
 ```
 
 

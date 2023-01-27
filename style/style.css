@@ -1,0 +1,60 @@
+Skip to content
+Search or jump to…
+Pull requests
+Issues
+Codespaces
+Marketplace
+Explore
+ 
+@gralexrob1 
+gralexrob1
+/
+Modeling
+Private
+Cannot fork because you own this repository and are not a member of any organizations.
+Code
+Issues
+Pull requests
+Actions
+Projects
+Security
+Insights
+Settings
+Modeling/style/style.css
+@gralexrob1
+gralexrob1 Final upload internship
+Latest commit dd7a04d on Jul 7, 2022
+ History
+ 1 contributor
+31 lines (28 sloc)  649 Bytes
+
+.navbar>.container .navbar-brand, .navbar>.container-fluid .navbar-brand {
+    margin-left: 500px;
+}
+
+.navbar-inverse .navbar-brand {
+    color: #333333;
+    font-size: 24px;
+    font-weight: bold;
+}
+.chart-title {
+    border-bottom: 1px solid #9e9e9e;
+    color: #666;
+    font-size: 20px;
+    font-weight: BOLD;
+    padding: 7px 10px 4px;
+}
+
+.navbar-nav, .navbar-form {
+    margin-left: 300px;
+    margin-right: 0px;
+}
+.value-box {
+    border-radius: 2px;
+    position: relative;
+    display: block;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    margin-top: 65px;
+    box-shadow: 0 1px 1px rgb(0 0 0 / 10%);
+}

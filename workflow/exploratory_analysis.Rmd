@@ -48,7 +48,9 @@ train %>% summary()
 
 ### Correlation
 ```{r}
+png('../plot/full_corrplot.png')
 get_correlation(train)
+dev.off()
 ```
 
 # EDA by var
