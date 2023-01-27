@@ -1,5 +1,5 @@
 set_numerics <- function(data, vars){
-  for (var in vars)
+  for(var in vars)
     data[,var] <- data[,var] %>% as.numeric()
   
   return(data)

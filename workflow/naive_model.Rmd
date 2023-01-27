@@ -36,6 +36,42 @@ init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''),
                   sep=",")
 
 target <- 'SalePrice'
+
+num_vars <- c(
+  'SalePrice',
+  'Size.sqf.',
+  'YearBuilt',
+  'YrSold',
+  'MonthSold',
+  'N_FacilitiesNearBy.PublicOffice.',
+  'N_FacilitiesNearBy.Hospital.',
+  'N_FacilitiesNearBy.Dpartmentstore.',
+  'N_FacilitiesNearBy.Mall.',
+  'N_FacilitiesNearBy.ETC.',
+  'N_FacilitiesNearBy.Park.',
+  'N_SchoolNearBy.Elementary.',
+  'N_SchoolNearBy.Middle.',
+  'N_SchoolNearBy.High.',
+  'N_SchoolNearBy.University.',
+  'N_FacilitiesInApt',
+  'N_FacilitiesNearBy.Total.',
+  'N_SchoolNearBy.Total.',
+  'N_Parkinglot.Ground.',
+  'N_Parkinglot.Basement.',
+  'N_APT',
+  'N_manager',
+  'N_elevators',
+  'Floor'
+)
+
+chr_vars <- c(
+  'HallwayType',
+  'HeatingType',
+  'AptManageType',
+  'TimeToBusStop',
+  'TimeToSubway',
+  'SubwayStation'
+)
 train <- set_numerics(init_train, num_vars)
 ```
 
@@ -303,6 +339,5 @@ model %>% summary()
 
 model_pred <- predict(model, newdata=test)
 RMSE(model_pred, test$SalePrice)
-
 ```
 

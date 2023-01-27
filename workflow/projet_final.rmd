@@ -1,0 +1,878 @@
+---
+title: "projet_MLG"
+author: "Matteo Sammut"
+date: '2022-12-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(2022)
+```
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(MASS)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape2)
+library(dplyr)
+library(GGally)
+library(corrplot)
+library(carData)
+library(car)
+library(questionr)
+library(multcomp)
+library(dplyr)
+library(tidyverse)
+library(forestmodel)
+library(effects)
+library(pscl)
+library(ResourceSelection)
+library(survey)
+library(caret)
+library(pROC)
+library(ROCR)
+library(mlr)
+library(randomForest)
+library(party)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(nnet)
+library(ResourceSelection)
+library(corrplot)
+library(plyr)
+source("functions.R")
+
+```
+
+```{r}
+data_engineering = function(data){
+  cat_vars = c('N_Parkinglot.Ground.', 'N_Parkinglot.Basement.',
+               'N_APT', 'N_manager', 'N_elevators', 'N_FacilitiesNearBy.PublicOffice.',
+               'N_FacilitiesNearBy.Dpartmentstore.', 'N_FacilitiesNearBy.Mall.',
+               'N_FacilitiesNearBy.ETC.', 'N_FacilitiesNearBy.Park.',
+               'N_SchoolNearBy.Elementary.', 'N_SchoolNearBy.Middle.',
+               'N_SchoolNearBy.High.', 'N_SchoolNearBy.University.',
+               'N_FacilitiesInApt', 'N_FacilitiesNearBy.Total.',
+               'N_SchoolNearBy.Total.', 'HallwayType', 'HeatingType', 'AptManageType',
+               'TimeToBusStop', 'TimeToSubway', 'SubwayStation', 'N_FacilitiesNearBy.Hospital.',
+               'MonthSold', 'YrSold', "YearBuilt")
+  int_vars = c("SalePrice", "Size.sqf.")
+  data = data %>% mutate_at(vars(matches(int_vars)), as.integer)
+  data = data %>% mutate_at(vars(matches(cat_vars)), as.factor)
+  return(data)
+}
+```
+
+```{r}
+modify_categories <- function(df, strategies){
+  
+  variables <- names(strategies)
+  
+  for(variable in variables) {
+    
+    strategy <- strategies[[variable]]
+    new_var = sprintf('%s_cat', variable)
+    
+    if(is.numeric(df[,variable]) || (is.factor(df[,variable]) && !is.null(strategy$breaks))) {
+      
+      if (is.numeric(df[,variable]) == F) {
+        df[,variable] <- as.numeric(as.factor(df[,variable]))
+      }
+      df[,new_var] <- cut(df[,variable], breaks = strategy$breaks, right = TRUE)
+    } else {
+      df[, new_var] = mapvalues(df[,variable], from = names(strategy), to = strategy)
+    }
+  }
+  return(df)
+}
+
+
+
+
+```
+
+
+
+```{r}
+
+train=read.csv2("train.csv",header=TRUE,sep=",")
+test=read.csv2("test.csv",header=TRUE,sep=",")
+train = data_engineering(train)
+test = data_engineering(test)
+#train = train %>% select(SalePrice) %>% sqrt() %>% as.vector()
+#test$SalePrice = test %>% select(SalePrice) %>% sqrt()
+```
+
+
+```{r}
+str(train)
+```
+
+```{r}
+vars_categorical = train %>% select_if(is.factor) %>% colnames()
+n_vars_categorical = length(vars_categorical)
+
+matrix_correlation = matrix(data = -2, 
+                            nrow = n_vars_categorical,
+                            ncol = n_vars_categorical)
+train_cat = train %>% select_if(is.factor)
+for (ii in 1:n_vars_categorical){
+  for (jj in 1:n_vars_categorical){
+    #corr = train %>% select(c(var_col, var_row)) %>% table %>% cramer.v
+    corr = cramer.v(table(train_cat[, ii], train_cat[, jj]))
+    matrix_correlation[ii, jj] = corr
+  }
+}
+colnames(matrix_correlation) = vars_categorical
+rownames(matrix_correlation) = vars_categorical
+corrplot(matrix_correlation,order="hclust",tl.cex = 0.4)
+```
+
+```{r}
+set.seed(2022)
+Q1 <- quantile(train$SalePrice, probs = 0.25)
+Q3 <- quantile(train$SalePrice, probs = 0.75)
+IQR <- Q3-Q1
+
+
+
+train_IQ = filter(train, SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR)
+test_IQ = filter(test, SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR)
+
+#Scaling des données numériques
+num_vars <- sapply(train_IQ, is.numeric)
+num_vars[1] = FALSE #On eneleve la variable target 
+train_IQ[, num_vars] <- scale(train_IQ[, num_vars])
+test_IQ[, num_vars] <- scale(test_IQ[, num_vars])
+
+####Modele lineaire naif avec IQ
+set.seed(2022)
+linear_model_base_IQ = lm(sqrt(SalePrice)~ Size.sqf. + YrSold + MonthSold + Floor + AptManageType +
+                            HallwayType + HeatingType + TimeToSubway + TimeToBusStop + N_APT,
+                          data = train_IQ)
+
+summary(linear_model_base_IQ)
+linear_pred_base_IQ <- predict(linear_model_base_IQ, newdata = test_IQ)
+print(RMSE(linear_pred_base_IQ**2, test_IQ$SalePrice))
+```
+
+```{r}
+set.seed(2022)
+linear_model_base_IQ = lm(sqrt(SalePrice)~ Size.sqf. + YrSold + MonthSold + N_Parkinglot.Ground. + Floor
+                          + TimeToBusStop,
+                          data = train_IQ)
+
+summary(linear_model_base_IQ)
+linear_pred_base_IQ <- predict(linear_model_base_IQ, newdata = test_IQ)
+print(RMSE(linear_pred_base_IQ**2, test_IQ$SalePrice))
+```
+
+
+```{r}
+var1 = "AptManageType"
+var2 = "TimeToSubway"
+table(train_IQ[, var1], train_IQ[, var2])
+```
+
+
+```{r}
+### PAs touche
+train = train %>% 
+  mutate_if(funs(n_distinct(.) < 25), as.factor)
+train = train %>% mutate(YearBuilt = as.factor(YearBuilt)) 
+train = train %>% mutate(N_Parkinglot.Ground. = as.numeric(YrSold)) 
+train = train %>% mutate(N_Parkinglot.Basement. = as.numeric(N_Parkinglot.Basement.))
+train = train %>% mutate(N_Parkinglot.Basement. = as.numeric(N_elevators)) 
+```
+
+
+```{r}
+### PAs touche
+library(vcd)
+train$N_Parkinglot.Ground. = as.factor(train$N_Parkinglot.Ground.)
+# Calculer le coefficient de Cramér (V)
+cramer.v(table(as.factor(train$N_Parkinglot.Ground.), as.factor(train$N_manager)))
+
+# Afficher le résultat
+library(vcdExtra)
+library(polycor)
+GKgamma(train[, c('N_manager', 'N_Parkinglot.Ground.')], level = 0.95)
+# Calcule le coefficient de Cramér (V)
+yager(as.factor(train$N_Parkinglot.Ground.), as.factor(train$N_manager))
+
+# Calcule le coefficient de Cramér (V)
+gk(as.factor(train$N_Parkinglot.Ground.), as.factor(train$N_manager))
+```
+
+
+```{r}
+### PAs touche
+result = list()
+features_selected = c('Size.sqf.', 'YrSold', 'MonthSold')
+X_train = train %>% select(features_selected)
+y_train = train %>% select(SalePrice)
+X_test = test %>% select(features_selected)
+y_test = test %>% select(SalePrice)
+```
+
+
+```{r}
+### PAs touche
+features_num <- sapply(X_train, is.numeric)
+X_train[, features_num] <- scale(X_train[, features_num])
+X_test[, features_num] <- scale(X_test[, features_num])
+```
+
+
+
+
+```{r}
+var = 'AptManageType'
+par(mfrow = c(1, 2))
+#ggplot(train, aes(x = train[,var])) + 
+#  geom_bar() 
+ggplot(train, aes(x = train[,var], y = SalePrice)) +
+  geom_boxplot() + 
+  labs(x=var)
+```
+
+
+
+```{r}
+
+model = lm(sqrt(SalePrice) ~ Size.sqf. + YearBuilt, data = train)
+model = caret :: train(SalePrice ~ Size.sqf., data = train,
+                       method = 'lm', preProcess = c('center', 'scale'))
+summary(model)
+y_pred_test = predict(model, newdata = test)
+y_pred_train = predict(model, newdata = train)
+y_true = test$SalePrice
+sqrt(sum((y_pred_test - y_true)**2))
+sqrt(sum((y_pred_train - train$SalePrice)**2))
+result[[vars]] =  sum((y_pred_test - y_true)**2)
+
+
+```
+
+```{r}
+## Input Transformation 
+preProcValues = preProcess(X_train, method = c("center", "scale"))
+
+X_train_scale = predict(preProcValues, X_train)
+X_train_scale * preProcValues$std[]
+y = y %>% select(SalePrice) %>% sqrt()
+```
+
+```{r}
+model = lm(sqrt(SalePrice) ~ Size.sqf. + YearBuilt, data = train)
+```
+
+
+```{r}
+train[, c('SalePrice')] = sqrt(train[, c('SalePrice')])
+preProcValues <- preProcess(train, method = c("center", "scale"))
+train_pp <- predict(preProcValues, train)
+
+# Entraînement du modè
+model = lm(SalePrice ~ Size.sqf., data = train)
+# Prédiction sur les données de test
+test[, c('SalePrice')] = sqrt(test[, c('SalePrice')])
+test_pp <- predict(preProcValues, test)
+predictions <- predict(model, test_pp)
+train_inv$SalePrice = (train_pp$SalePrice + preProcValues$mean["SalePrice"]) * preProcValues$std["SalePrice"]
+train_inv$SalePrice = train_pp$SalePrice**2
+# Remettre l'échelle des prédictions à son état d'origine uniquement pour les variables numériques
+predictions <- (predictions + preProcValues$mean["SalePrice"]) * preProcValues$std["SalePrice"]
+
+```
+
+```{r}
+train = data_engineering(train)
+test = data_engineering(test)
+```
+
+```{r}
+correlation_matrix = train %>% select(is.numeric) %>% cor(method = 'spearman')
+corrplot(correlation_matrix, order="hclust", tl.cex = 0.4)
+
+```
+
+```{r}
+corr_target = as.data.frame(correlation_matrix[,"SalePrice"])
+corr_target %>% arrange(desc(abs(.)))
+```
+
+```{r}
+train %>% summarise_all(funs(n_distinct)) %>% gather()
+```
+
+```{r}
+train = train %>% 
+  mutate_if(funs(n_distinct(.) < 25), as.factor)
+train = train %>% mutate(YearBuilt = as.factor(YearBuilt)) 
+train = train %>% mutate(N_Parkinglot.Ground. = as.numeric(YrSold)) 
+train = train %>% mutate(N_Parkinglot.Basement. = as.numeric(N_Parkinglot.Basement.))
+train = train %>% mutate(N_Parkinglot.Basement. = as.numeric(N_elevators)) 
+```
+
+```{r}
+
+```
+
+
+```{r}
+strategies = list()
+```
+
+```{r}
+ggplot(train, aes(x = SalePrice))+geom_histogram()
+```
+
+
+
+## Size.sqf.
+
+```{r}
+ggplot(train, aes(x = Size.sqf.))+geom_boxplot()
+```
+
+## N_FacilitiesInApt
+```{r}
+var = 'YearBuilt'
+par(mfrow = c(1, 2))
+#ggplot(train, aes(x = train[,var])) + 
+#  geom_bar() 
+ggplot(train, aes(x = train[,var], y = SalePrice)) +
+  geom_boxplot() + 
+  labs(x=var)
+```
+
+```{r}
+strategies = list()
+strategies$YearBuilt = list(strategy = list(breaks = c(-Inf, 2005, Inf)),
+                                            strategy_type = 'numerical')
+#strategies$YearBuilt = list(breaks = c(-Inf, 2010, 2013, Inf))
+strategies$YrSold = list(strategy = list(breaks = c(-Inf, 2011, 2014, Inf)),
+                         strategy_type = 'numerical')
+#strategies$YrSold = list(breaks = c(-Inf, 2013, Inf))
+
+strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+                               "10min~15min" = "other",
+                               "15min~20min" = "other",
+                               "5min~10min" = "other",
+                               "no_bus_stop_nearby" = "other"),
+                               strategy_type = 'categorical')
+
+#strategies$TimeToSubway = list(strategy = list("0-5min" = "0-5min",
+#                               "10min-15min" = "other",
+#                               "15min-20min" = "other",
+#                               "5min-10min" = "other",
+#                               "no_bus_stop_nearby" = "no_bus_stop_nearby"),
+#                              strategy_type = 'categorical')
+
+
+strategies$N_manager = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                            strategy_type = 'numerical')
+
+strategies$SubwayStation = list(strategy = list("Chil-sung-market" = "low",
+                                "Daegu" = "1ow",
+                                "Bangoge" = 'medium',
+                                "Myung-duk" = "medium",
+                                "Banwoldang" = 'high',
+                                "Kyungbuk_uni_hospital" = 'high',
+                                "no_subway_nearby" = 'high',
+                                "Sin-nam" = 'high'),
+                                strategy_type = 'categorical')
+
+
+
+strategies$N_FacilitiesNearBy.PublicOffice. = list(strategy = list(breaks = c(-Inf, 4, Inf)),
+                                                   strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.High. = list(strategy =list(breaks = c(-Inf, 2, Inf)),
+                                        strategy_type = 'numerical')
+                                                   
+strategies$N_SchoolNearBy.University. = list(strategy = list(breaks = c(-Inf, 2, Inf)),
+                                        strategy_type = 'numerical')
+strategies$N_FacilitiesInApt = list(strategy = list(breaks = c(-Inf, 3, 8, Inf)),
+                                        strategy_type = 'numerical')
+```
+
+
+
+```{r}
+modify_categories <- function(df, strategies = strategies, drop_vars = TRUE){
+  
+  variables <- names(strategies)
+  
+  for(variable in variables) {
+    
+    strategy <- strategies[[variable]]$strategy
+    strategy_type <- strategies[[variable]]$strategy_type
+    new_var = ifelse(drop_vars, variable, sprintf('%s_cat', variable))
+    
+    if(strategy_type == 'numerical') {
+      
+      df = df %>% mutate_at(vars(variable), function(x) as.numeric(as.character(x)))
+      df[,new_var] <- cut(df[,variable], breaks = strategy$breaks, right = TRUE)
+      #df = df %>% mutate_at(vars(new_var), as.factor)
+    } 
+    else if (strategy_type == 'categorical'){
+      df = df %>% mutate_at(vars(variable), as.character)
+      df[, new_var] = unlist(mapvalues(df[,variable], from = names(strategy), to = strategy))
+      df = df %>% mutate_at(vars(new_var), as.factor)
+    }
+  }
+  return(df)
+}
+```
+
+
+
+```{r}
+
+# créer le pipeline en utilisant la fonction caret::preProcess() pour retirer les variables avant de les traiter
+pipeline <- caret::preProcess(train, 
+                              method = c("center", "scale"),
+                              preProc = function(data) {
+                                data <- data[, !(names(data) %in% c(features_drop))]
+                                modify_categories(data, strategies = strategies, drop_vars = TRUE)
+})
+```
+
+```{r}
+train = predict(pipeline, newdata = train)
+```
+
+```{r}
+
+```
+
+
+```{r}
+features_drop = c('MonthSold',
+                  'N_APT', 
+                  "N_FacilitiesNearBy.Mall.",
+                  "N_FacilitiesNearBy.Total.",
+                  "N_SchoolNearBy.Elementary.",
+                  "N_SchoolNearBy.Middle.",
+                  "N_SchoolNearBy.High.",
+                  "N_SchoolNearBy.University.",
+                  "N_elevators",
+                  "N_FacilitiesNearBy.ETC.",
+                  "N_SchoolNearBy.Total.",
+                  "N_FacilitiesNearBy.Park.")
+
+features_built <- grep("_cat$", colnames(train), value = TRUE)
+features_old <- sub("_cat$", "", features_built)
+
+
+# Sélectionner les colonnes qui n'ont pas été modifiées
+features_not_modified <- setdiff(colnames(train),c(features_built, 
+                                                   features_old, 
+                                                  features_drop))
+
+
+# Réunir les colonnes qui ont le suffixe '_cat' et celles qui n'ont pas été modifiées
+features_selected <- c(features_built, features_not_modified)
+```
+
+```{r}
+preProcess_pipeline <- caret::preProcess(modify_categories,
+                                        strategies = strategies, drop_vars = TRUE) %>%
+  caret::select(-one_of(features_drop)) %>%
+  caret::preProcess(method = c("center", "scale"))
+  
+model_fit <- caret::train(target ~ ., data = df, method = "lm",
+                           preProcess = preProcess_pipeline,
+                           trControl = trainControl(method = "cv"))
+```
+
+```{r}
+
+```
+
+
+```{r}
+y = train$SalePrice
+X = train %>% select(-SalePrice)
+```
+
+```{r}
+set.seed(2022)
+model = lm(SalePrice ~. -1, data = train[, features_selected])
+summary(model)
+rmse(model, train)
+```
+
+
+```{r}
+rmse =  function(model, data){
+  data = modify_categories(data, strategies)
+  y_true = data$SalePrice
+  y_pred = predict(model, data)
+  return(sqrt(sum((y_pred - y_true)**2)))
+}
+```
+
+```{r}
+train = modify_categories(train, strategies = strategies, drop_vars = TRUE)
+test = modify_categories(test, strategies = strategies, drop_vars = TRUE)
+train = train %>% select(features_selected)
+test = test %>% select(features_selected)
+preprocessParams<-preProcess(train, method = c("center", "scale"))
+train <- predict(preprocessParams, train)
+test <- predict(preprocessParams, test)
+```
+
+```{r}
+summary(caret :: train(SalePrice ~. -1, 
+                       data = train[, features_selected],
+                       method = 'glmnet', 
+                       preProcess = c("center", "scale")))
+```
+
+```{r}
+lasso<-caret::train(SalePrice~.,
+                 data = train,
+                 method = 'glmnet', 
+                 tuneGrid = expand.grid(alpha = 1, lambda = 1)
+           
+               ) 
+
+ridge<-caret::train(SalePrice~.,
+                     data = train,
+                 method = 'glmnet', 
+                 tuneGrid = expand.grid(alpha = 0, lambda = 1)
+  
+               ) 
+```
+
+
+```{r}
+predictions_lasso <- lasso %>% predict(test$SalePrice)
+predictions_ridge <- ridge %>% predict(test$SalePrice)
+```
+
+
+```{r}
+ print(RMSE(model, modify_categories(test)))
+```
+
+
+```{r}
+train %>%
+  # Compter le nombre de valeurs manquantes pour chaque colonne
+  summarise_all(funs(sum(is.na(.)))) %>%
+  # Transformer les résultats en un dataframe pour une meilleure lisibilité
+  as.data.frame()
+```
+
+# Analyse descriptive 
+```{r}
+
+```
+
+
+```{r}
+cat_variables = train %>% select_if(is.factor)
+```
+
+```{r}
+class(train$N_FacilitiesNearBy.PublicOffice.)
+```
+
+
+
+```{r}
+ggplot(train, aes(x = Size.sqf., y = SalePrice))+geom_point()+geom_smooth()
+```
+
+
+```{r}
+
+cor(train, method = 'pearson')
+```
+
+
+```{r}
+ggplot(train, aes(x = sqrt(SalePrice)))+
+  geom_density()
+```
+
+```{r}
+ggplot(train, aes(x = YearBuilt1, y = SalePrice))+
+  geom_boxplot()
+```
+
+```{r}
+train$YearBuilt1 <-as.factor(train$YearBuilt)
+train$year_sold <-as.factor(train$YrSold)
+```
+
+
+## Year Sold 
+```{r}
+
+ggplot(train, aes(x = year_sold, y = SalePrice))+
+  geom_boxplot()
+```
+
+
+
+```{r}
+train %>% tukey_hsd(SalePrice ~ year_sold)
+```
+```{r}
+str(train$year_sold)
+```
+
+```{r}
+model <- aov(SalePrice ~ year_sold, data = train)
+summary(model)
+print(model$coefficients)
+TukeyHSD(model, conf.level=.95)
+```
+
+```{r}
+tukey = TukeyHSD(model, conf.level=.95)
+mask = tukey$year_sold[,"p adj"] < 0.5
+tukey$year_sold[mask,]
+```
+
+
+```{r}
+colnames(tukey$year_sold)
+
+modalities_merger = function(df, x, y){
+  
+  model  
+}
+  
+  
+```
+
+
+```{r}
+ggplot(train, aes(x = (Size.sqf.), y = SalePrice)) +
+  geom_point()+geom_smooth()
+```
+
+```{r}
+cor(train %>% select( is.numeric))
+
+```
+
+```{r}
+data = data("sleep")
+```
+
+```{r}
+model = lm(SalePrice ~., data = train)
+summary(model)
+```
+
+```{r}
+
+library(dplyr)
+
+
+# Stocker les données dans une variable
+
+
+# Récupérer les noms de toutes les variables catégorielles
+cat_vars <- names(train)[sapply(train, is.factor)]
+
+# Boucle sur chaque variable catégorielle
+for(var in cat_vars) {
+  # Récupérer les modalités de la variable catégorielle
+  cat_mod <- levels(train[[var]])
+  
+  # Appliquer le test de Tukey pour vérifier les distributions statistiques des modalités de la variable catégorielle par rapport à la variable réponse
+  res_tukey <- TukeyHSD(aov(SalePrice ~ train[[var]], data = train))
+  
+  # Stocker les modalités qui ont une p-value > 0.05 (i.e. qui n'ont pas une distribution statistiquement différente)
+  mod_to_combine <- res_tukey$data[which(res_tukey$data[,4] > 0.05),1]
+  
+  # Combiner les modalités dans une nouvelle modalité "Autres"
+  train[[var]][train[[var]] %in% mod_to_combine] <- "Autres"
+  
+  # Supprimer les modalités combinées de la variable
+  train[[var]] <- droplevels(train[[var]])
+}
+```
+
+```{r}
+linear_model = lm(SalePrice ~., data = train)
+summary(linear_model)
+linear_pred <- predict(ridge_final, newdata = test)
+print(RMSE(linear_pred, test$SalePrice))
+```
+
+
+```{r}
+
+step_model <- stepAIC(linear_model, direction = "both", trace = TRUE)
+
+```
+
+```{r}
+step_linear_pred <- predict(step_model, newdata = test)
+print(RMSE(step_linear_pred, test$SalePrice))
+```
+
+```{r}
+cor(train[,-1])
+```
+
+
+```{r}
+summary(caret :: train(SalePrice ~., data = train, method = 'lm'))
+```
+
+
+```{r}
+coef(linear_model)
+```
+
+
+```{r}
+library(leaps)
+library(caret)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+step.model <- caret :: train(SalePrice ~., data = train,
+                    method = "leapForward",
+                    trControl = train.control
+                    )
+step.model$results
+```
+
+```{r}
+ridge_model <- caret :: train(SalePrice ~., data = train,
+                    method = "ridge")
+```
+
+```{r}
+ridge_model$results
+```
+```{r}
+ridge_pred = predict(ridge_model, newdata = test)
+RMSE(ridge_pred, test$SalePrice)
+```
+
+```{r}
+# Définir les valeurs de lambda pour essayer
+lambda_grid <- 10^seq(10, -2, length = 100)
+
+# Configurer la recherche en grille
+ridge_grid <- expand.grid(lambda = lambda_grid)
+```
+
+
+```{r}
+set.seed(2022)
+# Définir les valeurs de lambda pour essayer
+lambda_grid <- seq(1e-10, 1e-6, length = 20)
+
+# Configurer la recherche en grille
+ridge_grid <- expand.grid(lambda = lambda_grid)
+
+# Effectuer la validation croisée en utilisant la recherche en grille
+ridge_cv <- caret :: train(SalePrice ~ ., data = train,
+                  method = "ridge",
+                  tuneGrid = ridge_grid,
+                  trControl = trainControl(method = "cv", number = 5))
+
+# Afficher le meilleur lambda trouvé
+ridge_cv$bestTune
+
+ridge_final <- caret ::train(SalePrice ~ ., data = train, method = "ridge", tuneGrid = ridge_cv$bestTune)
+
+# Effectuer des prévisions sur les données de test
+predictions <- predict(ridge_final, newdata = test)
+RMSE(predictions, test$SalePrice)
+```
+
+```{r}
+ridge_final <- caret ::train(SalePrice ~ .,
+                             data = train,
+                             method = "ridge",
+                             preProcess = c("center", "scale"),
+                             tuneGrid = ridge_cv$bestTune)
+
+# Effectuer des prévisions sur les données de test
+predictions <- predict(ridge_final, newdata = test)
+RMSE(predictions, test$SalePrice)
+```
+
+
+```{r}
+ridge_final <- caret ::train(SalePrice ~ .,
+                             data = train,
+                             method = "ridge",
+                             tuneGrid = ridge_cv$bestTune,
+                             preProcess = NULL)
+
+# Effectuer des prévisions sur les données de test
+predictions <- predict(ridge_final, newdata = test)
+RMSE(predictions, test$SalePrice)
+```
+
+```{r}
+alpha_grid <- seq(1e-10, 1e-6, length = 20)
+
+# Configurer la recherche en grille
+alpha_grid <- expand.grid(alpha = alpha_grid)
+```
+
+```{r}
+alpha_grid <- seq(1e-10, 1e-6, length = 20)
+
+# Configurer la recherche en grille
+alpha_grid <- expand.grid(alpha = alpha_grid, lambda = 0)
+
+alpha_final <- caret ::train(SalePrice ~ .,
+                             data = train,
+                             method = "glmnet",
+                             tuneGrid = alpha_grid,
+                             preProcess = c('center'),
+                             trControl = trainControl(method = "cv", number = 5),
+                             family = 'gaussian')
+
+# Effectuer des prévisions sur les données de test
+lasso_pred <- predict(alpha_final, newdata = test)
+RMSE(lasso_pred, test$SalePrice)
+```
+
+```{r}
+alpha_grid <- seq(0.01, 1, by = 0.05)
+lambda_grid <- seq(0.0001, 0.1, by = 0.001)
+grid <- expand.grid(alpha = alpha_grid, lambda = lambda_grid)
+
+# Configurer la recherche en grille
+
+alpha_final <- caret ::train(SalePrice ~ .,
+                             data = train,
+                             method = "glmnet",
+                             tuneGrid = grid,
+                             trControl = trainControl(method = "cv", number = 5))
+
+# Effectuer des prévisions sur les données de test
+lasso_pred <- predict(alpha_final, newdata = test)
+RMSE(lasso_pred, test$SalePrice)
+```
+
+
+```{r}
+summary(ridge_final$finalModel)
+```
+

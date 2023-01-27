@@ -1,40 +1,3 @@
-num_vars <- c(
-  'SalePrice',
-  'Size.sqf.',
-  'YearBuilt',
-  'YrSold',
-  'MonthSold',
-  'N_FacilitiesNearBy.PublicOffice.',
-  'N_FacilitiesNearBy.Hospital.',
-  'N_FacilitiesNearBy.Dpartmentstore.',
-  'N_FacilitiesNearBy.Mall.',
-  'N_FacilitiesNearBy.ETC.',
-  'N_FacilitiesNearBy.Park.',
-  'N_SchoolNearBy.Elementary.',
-  'N_SchoolNearBy.Middle.',
-  'N_SchoolNearBy.High.',
-  'N_SchoolNearBy.University.',
-  'N_FacilitiesInApt',
-  'N_FacilitiesNearBy.Total.',
-  'N_SchoolNearBy.Total.',
-  'N_Parkinglot.Ground.',
-  'N_Parkinglot.Basement.',
-  'N_APT',
-  'N_manager',
-  'N_elevators',
-  'Floor'
-)
-
-chr_vars <- c(
-  'HallwayType',
-  'HeatingType',
-  'AptManageType',
-  'TimeToBusStop',
-  'TimeToSubway',
-  'SubwayStation'
-)
-
-
 preprocessing <- function(data){
   
   ##### YearBuilt #####
@@ -299,6 +262,15 @@ preprocessing <- function(data){
 }
 
 
+preprocess.SalePrice <- function(data){
+  #' Preprocesses target
+  #' @param data A data.frame
+  
+  data <- data %>%
+    mutate(SalePrice = sqrt(SalePrice))
+  return(data)
+}
+
 preprocess.N_Facilities_Nearby <- function(data, strat=NULL, drop=TRUE){
   #' Preprocesses cluster N_FacilitiesNearBy
   #'
@@ -334,6 +306,7 @@ preprocess.N_Facilities_Nearby <- function(data, strat=NULL, drop=TRUE){
     return(data)
   }
 }
+
 
 
 

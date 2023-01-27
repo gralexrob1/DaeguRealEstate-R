@@ -1,0 +1,89 @@
+---
+title: "Ridge"
+author: "Alexandre Robin"
+date: "`r Sys.Date()`"
+output: html_document
+
+params:
+  path_data_folder: "../data/"
+  path_R_folder: "../R/"
+---
+
+# Parameters
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
+
+source(paste(params$path_R_folder,"libraries.R", sep=''))
+source(paste(params$path_R_folder,"functions.R", sep=''))
+source(paste(params$path_R_folder,"preprocessing.R", sep=''))
+
+init_train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+                   header=TRUE, 
+                   sep=",")
+init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+                  header=TRUE, 
+                  sep=",")
+target <- 'SalePrice'
+```
+
+# Engineering
+```{r}
+engineering = function(data){
+  cat_vars = c('N_Parkinglot.Ground.', 
+               'N_Parkinglot.Basement.',
+               'N_APT', 'N_manager', 'N_elevators',
+               'N_FacilitiesNearBy.PublicOffice.',
+               'N_FacilitiesNearBy.Dpartmentstore.',
+               'N_FacilitiesNearBy.Mall.',
+               'N_FacilitiesNearBy.ETC.', 
+               'N_FacilitiesNearBy.Park.',
+               'N_SchoolNearBy.Elementary.', 
+               'N_SchoolNearBy.Middle.',
+               'N_SchoolNearBy.High.', 
+               'N_SchoolNearBy.University.',
+               'N_FacilitiesInApt', 
+               'N_FacilitiesNearBy.Total.',
+               'N_SchoolNearBy.Total.', 
+               'HallwayType', 'HeatingType', 'AptManageType',
+               'TimeToBusStop', 'TimeToSubway', 'SubwayStation',
+               'N_FacilitiesNearBy.Hospital.',
+               'MonthSold', 'YrSold', "YearBuilt")
+  int_vars = c("SalePrice", "Size.sqf.",'Floor')
+  data = data %>% mutate_at(vars(matches(int_vars)), as.integer)
+  data = data %>% mutate_at(vars(matches(cat_vars)), as.factor)
+  return(data)
+}
+
+train_engineered <- init_train %>% engineering
+test_engineered <- init_test %>% engineering
+```
+
+# 
+```{r}
+var1 <- 'N_Parkinglot.Ground.'
+var2 <- 'AptManageType'
+
+idea <- train[, c(target,var1,var2)]
+
+buffer <- train %>%
+  group_by(N_Parkinglot.Ground., AptManageType) %>% 
+  summarise(count = n())
+
+buffer['new'] <- buffer %>% apply(1, function(line) paste(line[var1],line[var2]))
+buffer
+
+
+idea[,'new'] <- idea %>% apply(1,
+                               function(line){
+                                 ifelse(paste(line[var1],line[var2]) %in% buffer[,'new'],
+                                        paste(line[var1],line[var2]),
+                                        'Other')
+                               })
+
+
+idea
+
+
+
+```
+

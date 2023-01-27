@@ -38,6 +38,7 @@ init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''),
 target <- 'SalePrice'
 train <- set_numerics(init_train, num_vars)
 ```
+
 ```{r}
 library(dplyr)
 data <- train
@@ -78,9 +79,8 @@ train %>% summary()
 
 ### Correlation
 ```{r}
-png('../plot/full_corrplot.png')
-get_correlation(train)
-
+# png('../plot/full_corrplot.png')
+# get_correlation(train)
 # dev.off()
 ```
 
@@ -1114,10 +1114,10 @@ corrplot(correlation_matrix,
 Zook all N_school and only keep total ?
 
 
-# EDA by type
+# EDA by cluster
 
 ```{r}
-list(
+c(
   'SalePrice',
   'Size.sqf.',
   'YearBuilt',
@@ -1142,75 +1142,92 @@ list(
   'N_manager',
   'N_elevators',
   'Floor'
-) -> quantitative_vars
+) -> num_vars
 
-list(
+c(
   'HallwayType',
   'HeatingType',
   'AptManageType',
   'TimeToBusStop',
   'TimeToSubway',
   'SubwayStation'
-) -> qualitative_vars
+) -> chr_vars
+```
 
-length(quantitative_vars) + length(qualitative_vars) == length(train)
+## Corr quant
+```{r}
+library(dplyr)
 
-for (var in quantitative_vars)
+train <- set_numerics(init_train, num_vars)
+train <- init_train
+for (var in num_vars)
     train[,var] <- train[,var] %>% as.numeric()
+train_quant <- train[, num_vars]
 
+#train_quant <- train_quant %>% select(-c(YearBuilt,YrSold,Size.sqf.,Floor,N_Parkinglot.Ground.,N_Parkinglot.Basement.,N_APT,N_manager,N_elevators))
 
-qualitative_vars <- unlist(qualitative_vars)
-quantitative_vars <- unlist(quantitative_vars)
+train_quant <- train_quant %>% select(-MonthSold)
+
+train_school <- train_quant %>% 
+  select(c(SalePrice, starts_with("N_School")))
+
+train_facil <- train_quant %>% 
+  select(c(SalePrice, starts_with("N_Facili")))
+train_facil <- train_facil %>% 
+  select(-N_FacilitiesInApt)
+
+train_corr <- cor(train_quant)
+train_corr_school <- cor(train_school)
+train_corr_facil <- cor(train_facil)
+
+corrplot(train_corr_school, 
+         method ="number", type="upper", 
+         tl.col="black", tl.srt=50, tl.cex = 0.6, 
+         number.cex=0.7)
+corrplot(train_corr_facil, 
+         method ="number", type="upper", tl.col="black",
+         tl.srt=50,
+         tl.cex = 0.6, number.cex=0.7)
+corrplot(train_corr, 
+         method ="ellipse", type="upper", order="hclust", 
+         tl.col="black", tl.srt=50, tl.cex = 0.6)
+corrplot(train_corr,
+         method ="ellipse", type="upper", order="AOE",
+         tl.col="black", tl.srt=50, tl.cex = 0.6)
+corrplot(train_corr, 
+         method ="number", type="upper", 
+         order="AOE", tl.col="black", tl.srt=50, 
+         tl.cex = 0.6, number.cex=0.4)
 ```
 
-## EDA for quantitative variables
+
 ```{r}
-train_quant <- train[, quantitative_vars]
-train_quant %>% colnames()
-```
-###
 
-
-```{r}
-for(var in train_quant){
-  hist(var)
-}
-```
-```{r}
-ggplot(train_quant) +
-  geom_histogram(aes(SalePrice), binwidth=10000) +
-  geom_density(aes(SalePrice)) 
 ```
 
 
 ```{r}
-for (var_name in colnames(train_quant)){
-    print(
-      ggplot(train_quant, aes(get(var_name))) +
-        geom_density() +
-        ggtitle(var_name)*
-        # geom_line(aes(Date, get(elem))) +
-        # geom_point(aes(Date, get(elem)))
 
-        # theme_minimal() +
-        # xlab("Date") +
-        # ylab("Values") +
-        # scale_color_manual(values = c("elem"="#B22222"), labels= c(elem)) +
-        # labs(colors = "legends")
-    )
-}
 ```
 
 
-## EDA for qualitative variables
+## Corr qual
 ```{r}
 train_qual <- train[, qualitative_vars]
 ```
 
 ```{r}
+ridgeline::ridgeline(train[,'N_Parkinglot.Ground.'],
+                     train[,'AptManageType'])
 
 ```
 
 
+```{r}
+idea <- train %>%
+  group_by(N_Parkinglot.Ground., AptManageType) %>% 
+  summarise(count = n())
+idea
+```
 
 
