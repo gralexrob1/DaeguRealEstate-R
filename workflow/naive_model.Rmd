@@ -105,7 +105,7 @@ train <- train %>% preprocessing()
 train <- train %>% factorize()
 
 model <- lm(SalePrice ~., train)
-model %>% summary()
+a <- model %>% summary()
 
 test <- test %>% set_numerics(num_vars)
 test <- test %>% preprocessing()
@@ -139,6 +139,61 @@ model0 %>% summary
 stepAIC(model0, direction='both', trace=T)
 ```
 
+# Best 2-3 combi
+```{r}
+require(gtools, install.packages('gtools'))
+combi2 <- combinations(n =length(colnames(train)), r = 2, colnames(train))
+combi2 <- cbind(combi2, rep(NA, times = nrow(combi2)))
+combi3 <- combinations(n =length(colnames(train)), r = 3, colnames(train))
+combi_all <- rbind(combi2, combi3)
+
+get_formula <- function(target, combirow){
+  formula <- paste(target, '~', sep = " ")
+  for(i in seq_along(combirow)){
+    ifelse(i==1,
+           formula <- paste(formula, combirow[i], sep = ' '),
+           ifelse(is.na(combirow[i]), 
+                  formula,
+                  formula <- paste(formula, combirow[i], sep = ' + ')
+                  )
+           )
+  }
+  formula <- as.formula(formula)
+}
+```
+
+
+```{r}
+train <- init_train
+train <- train %>% set_numerics(num_vars)
+train <- train %>% preprocessing
+train <- train %>% factorize
+
+test <- init_test
+test <- test %>% set_numerics(num_vars)
+test <- test %>% preprocessing()
+test <- test %>% factorize
+
+lRes <- apply(combi_all, 1, function(combirow){
+  model <- lm(get_formula(target, combirow), train)
+  model_pred <- predict(model, newdata=test)
+  output_RMSE <- list(RMSE = RMSE(model_pred, test$SalePrice) )
+  output_vars <- list(
+    Target = target, 
+    Var1 = combirow[1], 
+    Var2 = combirow[2], 
+    Var3 = combirow[3]
+    )
+  return(c(output_vars, output_RMSE))
+})
+
+dfRes <- data.frame()
+for(elem in lRes) dfRes <- rbind(dfRes, elem)
+
+sorted_res <- dfRes[order(dfRes[,'RMSE'], decreasing = FALSE),]
+
+write.csv(sorted_res, '../output/lm_2-3vars.csv', row.names=F)
+```
 
 
 
