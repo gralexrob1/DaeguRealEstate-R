@@ -29,24 +29,50 @@ params:
 knitr::opts_chunk$set(fig.align = 'center', warning=FALSE,message=FALSE)
 
 source(paste(params$path_R_folder,"libraries.R", sep=''))
+source(paste(params$path_R_folder,"functions.R", sep=''))
+source(paste(params$path_R_folder,"preprocessing.R", sep=''))
+set.seed(2022)
+
+init_train <- read.csv2(paste(params$path_data_folder, "train.csv",sep=''),
+                   header=TRUE, 
+                   sep=",")
+init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''), 
+                  header=TRUE, 
+                  sep=",")
+
+target <- 'SalePrice'
 ```
+
+```{r}
+# Engineering
+train <- init_train %>% engineering
+
+# Outliers
+Q1 <- quantile(train$SalePrice, probs = 0.25)
+Q3 <- quantile(train$SalePrice, probs = 0.75)
+IQR <- Q3-Q1
+train <- filter(train, SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR)
+
+# Transformation
+train_transfo <- train %>% mutate(SalePrice = sqrt(SalePrice))
+```
+
 
 
 Présentation
 ============
+Column 
+------
+### Introduction
 Le jeu de données concerne la vente de 5891 logements et de 29 variables explicatives décrivant (presque) toutes les caractéristiques des logements et de leur environnement en Corée du Sud dans la ville de Daegu, sur une période de 10 ans.
 
 L'objectif est de prédire le prix de vente d'un logement à partir de ces données et d'obtenir le meilleur modèle possible.
 
-
-Données
-=======
-
 Column 
 ------
-### But de l'étude
-Il y a 2 jeux de données :
-- Le jeu d'entraînement (4189 observations), à partir duquel nous construisons un modèle.
+### Jeux de données
+Il y a 2 jeux de données :  
+- Le jeu d'entraînement (4189 observations), à partir duquel nous construisons un modèle.  
 - Le jeu de test (1702 observations), que nous utiliserons pour tester la solidité de notre modèle.
 
 Column
@@ -58,6 +84,40 @@ descr <- read.csv2(paste(params$path_data_folder, "descr.csv",sep=''),
                    sep=";")
 descr %>% kable
 ```
+
+Exploration
+===========
+
+Column
+------
+### Contexte
+Les prix de vente de logements sont la variable cible.
+
+Avant même de regarder plus en profondeur les données, nous pensons à plusieurs facteurs qui peuvent expliquer le prix d'un logement. Parmi eux la taille, la modernité (année de construction, équipements, etc) et la localisation semblent être les plus importants et les plus pertinents.
+
+Dans notre jeu de données, nous pouvons caractérister ces facteurs. La taille du logement est représentée par la variable 'Size.sqf.', la modernité peut être représentée par diverses combinaisons comme l'année de construction ou les équipements, mais il manque des données précises de localisations. Nous disposons de la station de métro la plus proche et d'informations globales sur le quartier et les services et installations à proximité du logement.
+
+Pour que le modèle soit bon, il faut qu'il soit performant mais simple. Nous nous séparerons donc des information redondantes 
+
+Column
+------
+### Distribution de la cible
+```{r}
+hist_and_density(train, target, binwidth=20000)
+```
+
+### Distribution de la cible après transformation
+```{r}
+hist_and_density(train_transfo, target, binwidth=30)
+```
+
+Column
+------
+### 
+
+
+
+
 
 Modèle
 ======

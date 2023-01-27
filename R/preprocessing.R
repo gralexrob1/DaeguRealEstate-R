@@ -308,10 +308,64 @@ preprocess.N_Facilities_Nearby <- function(data, strat=NULL, drop=TRUE){
 }
 
 
+preprocess.SubwayStation <- function(data, strategie=NULL){
+  
+  if(is.null(strat))
+    return(data)
+  
+  if(strategie==1){
+    group1 <- c('Sin-nam','Bangoge','Myung-duk')
+    group2 <- c('Daegu','Chil-sung-market')
+    group3 <- c('Banwoldang', 'Kyungbuk_uni_hospital')
+    data <- data %>% 
+      mutate(SubwayStation_byProxy1 =
+               if_else(SubwayStation %in% group1, 'group1',
+                       if_else(SubwayStation %in% group2, 'group2',
+                               if_else(SubwayStation %in% group3, 'group3', 'None')
+                       )
+               )
+      )
+    return(data)
+  }
+  
+  if(strategie==2){
+    group1 <- c('Bangoge','Myung-duk')
+    group2 <- c('Daegu','Chil-sung-market')
+    group3 <- c('Banwoldang','Kyungbuk_uni_hospital','Sin-nam')
+    data <- data %>% 
+      mutate(SubwayStation_byProxy2 =
+               if_else(SubwayStation %in% group1, 'group1',
+                       if_else(SubwayStation %in% group2, 'group2',
+                               if_else(SubwayStation %in% group3, 'group3', 'None')
+                       )
+               )
+      )
+    return(data)
+  }
+}
+
 
 
 factorize <- function(data){
   data <- data %>%
     mutate_if(is.character, as.factor)
+  return(data)
+}
+
+
+engineering <- function(data){
+  cat_vars <- c('N_Parkinglot.Ground.', 'N_Parkinglot.Basement.',
+               'N_APT', 'N_manager', 'N_elevators', 'N_FacilitiesNearBy.PublicOffice.',
+               'N_FacilitiesNearBy.Dpartmentstore.', 'N_FacilitiesNearBy.Mall.',
+               'N_FacilitiesNearBy.ETC.', 'N_FacilitiesNearBy.Park.',
+               'N_SchoolNearBy.Elementary.', 'N_SchoolNearBy.Middle.',
+               'N_SchoolNearBy.High.', 'N_SchoolNearBy.University.',
+               'N_FacilitiesInApt', 'N_FacilitiesNearBy.Total.',
+               'N_SchoolNearBy.Total.', 'HallwayType', 'HeatingType', 'AptManageType',
+               'TimeToBusStop', 'TimeToSubway', 'SubwayStation', 'N_FacilitiesNearBy.Hospital.',
+               'MonthSold', 'YrSold', "YearBuilt")
+  int_vars = c("SalePrice", "Size.sqf.")
+  data = data %>% mutate_at(vars(matches(int_vars)), as.integer)
+  data = data %>% mutate_at(vars(matches(cat_vars)), as.factor)
   return(data)
 }

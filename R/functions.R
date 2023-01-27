@@ -43,12 +43,13 @@ boxplot_mano <- function(df, target, var){
 
 hist_and_density <- function(data, var, binwidth=10){
   ggplot(data, aes(x=data[,var])) +
-    geom_density() +
     geom_histogram(aes(y=..density..), 
                    colour=1, 
                    fill='white',
                    binwidth=binwidth) +
-    labs(x=var)
+    geom_density(alpha=.2, fill="#FF6666") +
+    labs(x=var, title = paste(var, "distribution"))
+  
 }
 
 

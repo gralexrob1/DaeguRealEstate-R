@@ -32,3 +32,5 @@ library(rpart)
 library(rpart.plot)
 library(survey)
 library(tidyverse)
+
+select <- dplyr::select

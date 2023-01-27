@@ -36,7 +36,16 @@ init_test <- read.csv2(paste(params$path_data_folder, "test.csv", sep=''),
                   sep=",")
 
 target <- 'SalePrice'
-train <- set_numerics(init_train, num_vars)
+
+train <- train %>% engineering
+
+# Quantiles
+Q1 <- quantile(train$SalePrice, probs = 0.25)
+Q3 <- quantile(train$SalePrice, probs = 0.75)
+IQR <- Q3-Q1
+train <- train %>% 
+  filter(SalePrice > Q1 - 1.5 * IQR & SalePrice < Q3 + 1.5 * IQR) 
+
 ```
 
 ```{r}
@@ -90,20 +99,25 @@ train %>% summary()
 ```{r}
 var <- 'SalePrice'
 
-train <- init_train
-train <- train %>% set_numerics(num_vars)
-
-train <- train %>% mutate(SalePrice = sqrt(SalePrice))
+# train <- train %>% mutate(SalePrice = sqrt(SalePrice))
 
 train[,var] %>% str
 train[,var] %>% summary
 train
 
-hist_and_density(train, var, binwidth=50)
+hist_and_density(train, var, binwidth=20000)
 
 ggplot(train, aes(x=train[,var], fill=train[,var])) +
   geom_boxplot() +
   labs(x=var)
+
+ggplot(train, aes(x=train[,var], colour=train[,var], fill=train[,var])) +
+  geom_boxplot(alpha=0.5, outlier.alpha=0) +
+  # geom_jitter(width=0.25)+
+  # stat_summary(fun=mean, colour="black", geom="point",shape=18, size=3) +
+  scale_color_discrete(name=var) + scale_fill_discrete(name=var) +
+  labs(x=var, title = paste(var, 'boxplot'))
+
 
 if(!require(tseries)){install.packages('tseries')}
 jarque.bera.test(train[,var])
@@ -195,14 +209,22 @@ var <- 'Size.sqf.'
 train[,var] %>% str
 train[,var] %>% summary
 
-hist_and_density(train, var, binwidth=100)
+hist_and_density(train, var, binwidth=150)
 
 ggplot(train, aes(x=train[,var], fill=train[,var])) +
   geom_boxplot()
 
 ggplot(train, aes(x=train[,var], y=train[,target])) +
   geom_point() +
-  geom_smooth(method='lm')
+  geom_smooth(method='lm') +
+  labs(x=var, y=target, title = paste(var, 'smooth'))
+
+ggplot(train, aes(x=train[,var], colour=train[,var], fill=train[,var])) +
+  geom_boxplot(alpha=0.5, outlier.alpha=0) +
+  # geom_jitter(width=0.25)+
+  # stat_summary(fun=mean, colour="black", geom="point",shape=18, size=3) +
+  scale_color_discrete(name=var) + scale_fill_discrete(name=var) +
+  labs(x=var, title = paste(var, 'boxplot'))
 ```
 
 ### Floor
@@ -1228,6 +1250,42 @@ idea <- train %>%
   group_by(N_Parkinglot.Ground., AptManageType) %>% 
   summarise(count = n())
 idea
+
+var1 <- 'N_Parkinglot.Ground.'
+var2 <- 'AptManageType'
+
+idea['new'] <- idea %>% apply(1, function(col) paste(col[var1],col[var2]))
+
+idea
+
+train <- init_train 
+engineering = function(data){
+  cat_vars = c('N_Parkinglot.Ground.', 
+               'N_Parkinglot.Basement.',
+               'N_APT', 'N_manager', 'N_elevators',
+               'N_FacilitiesNearBy.PublicOffice.',
+               'N_FacilitiesNearBy.Dpartmentstore.',
+               'N_FacilitiesNearBy.Mall.',
+               'N_FacilitiesNearBy.ETC.', 
+               'N_FacilitiesNearBy.Park.',
+               'N_SchoolNearBy.Elementary.', 
+               'N_SchoolNearBy.Middle.',
+               'N_SchoolNearBy.High.', 
+               'N_SchoolNearBy.University.',
+               'N_FacilitiesInApt', 
+               'N_FacilitiesNearBy.Total.',
+               'N_SchoolNearBy.Total.', 
+               'HallwayType', 'HeatingType', 'AptManageType',
+               'TimeToBusStop', 'TimeToSubway', 'SubwayStation',
+               'N_FacilitiesNearBy.Hospital.',
+               'MonthSold', 'YrSold', "YearBuilt")
+  int_vars = c("SalePrice", "Size.sqf.",'Floor')
+  data = data %>% mutate_at(vars(matches(int_vars)), as.integer)
+  data = data %>% mutate_at(vars(matches(cat_vars)), as.factor)
+  return(data)
+}
+
+train_engineered <- init_train %>% engineering
 ```
 
 

@@ -341,3 +341,49 @@ model_pred <- predict(model, newdata=test)
 RMSE(model_pred, test$SalePrice)
 ```
 
+```{r}
+create_new_var <- function(data, var1, var2, contingency_table){
+  # Initialiser une liste vide pour stocker les modalités de la nouvelle variable
+  new_levels <- c()
+
+  # Parcourir les lignes du tableau de contingence pour créer les modalités de la nouvelle variable
+  for (i in 1:nrow(contingency_table)) {
+    for(j in 1:ncol(contingency_table)){
+      # Si le croisement a des occurences, créer une modalité correspondante
+      if (contingency_table[i,j] > 0) {
+        new_levels <- c(new_levels, 
+                        paste(rownames(contingency_table)[i],
+                              colnames(contingency_table)[j], 
+                              sep = "_"))
+      }else{
+        # Sinon, attribuer la modalité 'Autres'
+        new_levels <- c(new_levels, "Autres")
+      }
+    }
+  }
+  
+  # Initialiser une liste vide pour stocker les modalités de la nouvelle variable pour chaque observation
+  new_var <- c()
+  
+  # Parcourir les observations du dataframe pour attribuer la modalité correspondante à chaque observation
+  for (i in 1:nrow(data)) {
+    # Récupérer les modalités des deux variables d'entrée pour l'observation i
+    var1_modality <- data[i, var1]
+    var2_modality <- data[i, var2]
+    # Récupérer l'index de la modalité correspondante dans la liste new_levels
+    index <- which(new_levels == paste(var1_modality, var2_modality, sep = "_"))
+    if (length(index) == 0) {
+      index <- which(new_levels == "Autres")
+    }
+    # Ajouter la modalité correspondante à la liste new_var
+    new_var <- c(new_var, new_levels[index])
+  }
+  
+  # Ajouter la nouvelle variable au dataframe
+  name_new_var = sprintf('%s_%s', var1, var2)
+  data[, name_new_var] <- new_var
+  
+  return(data)
+}
+```
+
