@@ -146,7 +146,7 @@ train[,var] <- train[,var] %>% as.character
 boxplot_mano(train, target, var)
 train[,var] <- train[,var] %>% as.numeric
 
-ridgeline(train[,target], train[,var])
+ridgeline::ridgeline(train[,target], train[,var])
 ```
 
 
@@ -168,10 +168,10 @@ boxplot(train[,target]~train[,var], train,
         ylab=target)
 
 train[,var] <- train[,var] %>% as.character
-boxplot_mano(train, target, var)
+boxplot_mano(train, target, var, both=F)
 train[,var] <- train[,var] %>% as.numeric
 
-ridgeline(train[,target], train[,var])
+ridgeline::ridgeline(train[,target], train[,var])
 ```
 
 
@@ -184,7 +184,7 @@ var <- 'MonthSold'
 train[,var] %>% str
 train[,var] %>% summary
 train[,var] %>% unique
-train[,var] %>% quantile
+# train[,var] %>% quantile
 
 ggplot(train, aes(train[,var])) +
   geom_bar() +
@@ -194,11 +194,11 @@ boxplot(train[,target]~train[,var], train,
         xlab=var,
         ylab=target)
 
-train[,var] <- train[,var] %>% as.character
+# train[,var] <- train[,var] %>% as.character
 boxplot_mano(train, target, var)
-train[,var] <- train[,var] %>% as.numeric
+# train[,var] <- train[,var] %>% as.numeric
 
-ridgeline(train[,target], train[,var])
+ridgeline::ridgeline(train[,target], train[,var])
 ```
 
 
@@ -215,8 +215,8 @@ ggplot(train, aes(x=train[,var], fill=train[,var])) +
   geom_boxplot()
 
 ggplot(train, aes(x=train[,var], y=train[,target])) +
-  geom_point() +
-  geom_smooth(method='lm') +
+  geom_point(colour='#ff6600') +
+  geom_smooth(method='lm', colour='blue') +
   labs(x=var, y=target, title = paste(var, 'smooth'))
 
 ggplot(train, aes(x=train[,var], colour=train[,var], fill=train[,var])) +
@@ -250,7 +250,7 @@ train[,var] <- train[,var] %>% as.factor
 boxplot_mano(train, target, var)
 train[,var] <- train[,var] %>% as.numeric
 
-ridgeline(train[,target], train[,var])
+ridgeline::ridgeline(train[,target], train[,var])
 ```
 
 ### HallwayType
@@ -334,7 +334,7 @@ var <- 'N_Parkinglot.Ground.'
 train[,var] %>% str
 train[,var] %>% summary
 train[,var] %>% unique
-train[,var] %>% quantile
+# train[,var] %>% quantile
 cor_qual(train, target, var)
 
 ggplot(train, aes(train[,var])) +

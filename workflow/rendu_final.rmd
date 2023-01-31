@@ -1,0 +1,306 @@
+---
+title: "Rendu_Final_MLG"
+author: "Matteo Sammut"
+date: '2023-01-27'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(2022)
+```
+
+```{r}
+rm(list = ls())
+```
+
+```{r}
+library(MASS)
+library(knitr)
+library(ggplot2)
+library(cowplot)
+library(reshape2)
+library(dplyr)
+library(GGally)
+library(corrplot)
+library(carData)
+library(car)
+library(questionr)
+library(multcomp)
+library(dplyr)
+library(tidyverse)
+library(forestmodel)
+library(effects)
+library(pscl)
+library(ResourceSelection)
+library(survey)
+library(caret)
+library(pROC)
+library(ROCR)
+library(mlr)
+library(randomForest)
+library(party)
+library(rpart)
+library(rpart.plot)
+library(caret)
+library(nnet)
+library(ResourceSelection)
+library(corrplot)
+library(plyr)
+source("functions.R")
+```
+
+## Importing Data Sets
+
+```{r}
+train=read.csv2("train.csv",header=TRUE,sep=",")
+test=read.csv2("test.csv",header=TRUE,sep=",")
+train = data_dtypes(train)
+test = data_dtypes(test)
+target = 'SalePrice'
+```
+
+
+## Checking Missing Values
+
+```{r}
+missing_values <- train %>%
+  # Compter le nombre de valeurs manquantes pour chaque colonne
+  summarise_all(funs(sum(is.na(.)))) %>%
+  # Transformer en dataframe
+  as.data.frame() 
+
+missing_values
+```
+## EDA by var
+
+
+### SalePrice
+
+```{r}
+
+
+var <- 'SalePrice'
+
+hist_and_density(train, var, binwidth=20000)
+
+ggplot(train, aes(x=train[,var], fill=train[,var])) +
+  geom_boxplot() +
+  labs(x=var)
+```
+
+### YearBuilt
+```{r}
+var <- 'YearBuilt'
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline :: ridgeline(train[,target], train[,var])
+```
+
+
+### YrSold
+```{r}
+var <- 'YrSold'
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline :: ridgeline(train[,target], train[,var])
+```
+
+
+### MonthSold
+
+
+```{r}
+var <- 'MonthSold'
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+boxplot_mano(train, target, var)
+
+ridgeline::ridgeline(train[,target], train[,var])
+```
+
+
+### Size.sqf.
+```{r}
+var <- 'Size.sqf.'
+
+hist_and_density(train, var, binwidth=150)
+
+ggplot(train, aes(x=train[,var], y=train[,target])) +
+  geom_point() +
+  geom_smooth(method='lm') +
+  labs(x=var, y=target, title = paste(var, 'smooth'))
+
+ggplot(train, aes(x=train[,var], colour=train[,var], fill=train[,var])) +
+  geom_boxplot(alpha=0.5, outlier.alpha=0) +
+  scale_color_discrete(name=var) + scale_fill_discrete(name=var) +
+  labs(x=var, title = paste(var, 'boxplot'))
+
+```
+
+### Floor
+
+```{r}
+var <- 'Floor'
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+
+boxplot_mano(train, target, var)
+
+ridgeline::ridgeline(train[,target], train[,var])
+```
+
+### N_Parkinglot.Ground.
+Go numeric, se fera probablement tej anyway, cor 20%
+
+```{r}
+var <- 'N_Parkinglot.Ground.'
+
+ggplot(train, aes(train[,var])) +
+  geom_bar() +
+  labs(x=var)
+
+boxplot(train[,target]~train[,var], train,
+        xlab=var,
+        ylab=target)
+
+
+boxplot_mano(train, target, var)
+
+ridgeline::ridgeline(train[,target], train[,var])
+```
+
+
+
+
+## Correlation plot 
+
+```{r}
+correlation_num_plot(train)
+```
+
+```{r}
+correlation_cat_plot(train)
+```
+
+
+## Remvoing outliers 
+```{r}
+train = outliers_remover(train, var = 'SalePrice')
+```
+
+## Splitting X, y
+```{r}
+X_train = train %>% select(-as.name(target)) 
+y_train = train %>% select(as.name(target))
+X_test = test %>% select(-as.name(target)) 
+y_test = test %>% select(as.name(target))
+```
+
+```{r}
+preprocessing = preProcess(X_train, method = c('center', 'scale'))
+X_train = predict(preprocessing, X_train)
+X_test = predict(preprocessing, X_test)
+train_transf = cbind(y_train, X_train)
+test_transf = cbind(y_test, X_test)
+```
+
+## Modèle Linéaire Complet
+
+```{r}
+linear_model_complet = lm(sqrt(SalePrice)~ .,
+                          data = train_transf)
+y_pred_complet <- predict(linear_model_complet, newdata = test_transf)
+rmse_naif = RMSE(y_pred_complet**2, test_transf$SalePrice)
+```
+
+## Modèle Linéaire Step by Step
+
+```{r}
+####Modele lineaire naif avec IQ avec sélection stepwise des variables du modèle  
+set.seed(2022)
+linear_model_step = lm(sqrt(SalePrice)~ .,
+                          data = train_transf)
+step_model <- stepAIC(linear_model_step, scope = list(upper = ~ ., lower = ~ 1), direction = "both", trace = F)
+y_pred_step <- predict(step_model, newdata = test_transf)
+rmse_stepmodel = RMSE(y_pred_step**2, test_transf$SalePrice)
+```
+
+## Modèle Linéaire Régularisation Ridge
+
+```{r}
+set.seed(2022)
+control <- trainControl(method="cv",
+                        number=5)
+
+ridge_grid <- expand.grid(alpha = 0,
+                          lambda = seq(0.001, 1, length = 50))
+
+
+ridge_model <- caret ::train(sqrt(SalePrice) ~ YearBuilt + YrSold + MonthSold + Size.sqf. + 
+                               Floor + N_Parkinglot.Ground.,
+                             data = train_transf, 
+                             method = "glmnet", 
+                             trControl = control, 
+                             tuneGrid = ridge_grid)
+
+y_pred_ridge <- predict(ridge_model, newdata = test_transf)
+rmse_ridge = RMSE(y_pred_ridge**2, test_transf$SalePrice)
+print(rmse_ridge)
+```
+
+```{r}
+control <- trainControl(method="cv",
+                        number=5)
+
+lasso_grid <- expand.grid(alpha = seq(0.001, 1, length = 50),
+                          lambda =0 )
+
+lasso_model <- caret ::train(sqrt(SalePrice) ~ YearBuilt + YrSold + MonthSold + Size.sqf. + Floor +
+                               N_Parkinglot.Ground., 
+                             data = train_transf, 
+                             method = "glmnet", 
+                             trControl = control, 
+                             tuneGrid = lasso_grid)
+
+y_pred_lasso <- predict(lasso_model, newdata = test_transf)
+rmse_lasso = RMSE(y_pred_lasso**2, test_transf$SalePrice)
+rmse_lasso
+```
+
+```{r}
+
+```
+

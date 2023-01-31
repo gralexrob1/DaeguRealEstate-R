@@ -52,22 +52,7 @@ source("functions.R")
 ```
 
 ```{r}
-data_engineering = function(data){
-  cat_vars = c('N_Parkinglot.Ground.', 'N_Parkinglot.Basement.',
-               'N_APT', 'N_manager', 'N_elevators', 'N_FacilitiesNearBy.PublicOffice.',
-               'N_FacilitiesNearBy.Dpartmentstore.', 'N_FacilitiesNearBy.Mall.',
-               'N_FacilitiesNearBy.ETC.', 'N_FacilitiesNearBy.Park.',
-               'N_SchoolNearBy.Elementary.', 'N_SchoolNearBy.Middle.',
-               'N_SchoolNearBy.High.', 'N_SchoolNearBy.University.',
-               'N_FacilitiesInApt', 'N_FacilitiesNearBy.Total.',
-               'N_SchoolNearBy.Total.', 'HallwayType', 'HeatingType', 'AptManageType',
-               'TimeToBusStop', 'TimeToSubway', 'SubwayStation', 'N_FacilitiesNearBy.Hospital.',
-               'MonthSold', 'YrSold', "YearBuilt")
-  int_vars = c("SalePrice", "Size.sqf.")
-  data = data %>% mutate_at(vars(matches(int_vars)), as.integer)
-  data = data %>% mutate_at(vars(matches(cat_vars)), as.factor)
-  return(data)
-}
+
 ```
 
 ```{r}
